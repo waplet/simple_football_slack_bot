@@ -8,7 +8,7 @@ $dotenv = new Dotenv\Dotenv(__DIR__);
 $dotenv->load();
 $dotenv->required('BOT_TOKEN');
 
-$footballState = new FootballState(2);
+$footballState = new FootballState();
 $loop = Factory::create();
 
 $client = new Slack\RealTimeClient($loop);

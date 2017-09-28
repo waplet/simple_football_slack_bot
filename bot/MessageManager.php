@@ -152,10 +152,14 @@ class MessageManager
     private function onStatus(Message $message): string
     {
         return $this->state->getPlayerCount()
-            ? 'Players joined: ' . implode(' ', array_map(function ($userId) {
-                return '<@' . $userId . '>';
-            }, $this->state->getJoinedPlayers()))
-            : 'None!';
+            ? sprintf('Players joined %d/%d: %s',
+                $this->state->getPlayerCount(),
+                $this->state->getPlayersNeeded(),
+                implode(' ', array_map(function ($userId) {
+                    return '<@' . $userId . '>';
+                }, $this->state->getJoinedPlayers()))
+            )
+            : 'None';
     }
 
     private function onPing(Message $message): string
