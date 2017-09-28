@@ -1,6 +1,6 @@
 # Usage
-cp .env.example .env
 
+    cp .env.example .env
     // Populate your tokens and user ids
     $ php index.php
     // Add to slack bots
