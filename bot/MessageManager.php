@@ -112,7 +112,7 @@ class MessageManager
     private function onLeave(Message $message): string
     {
         if ($this->state->leave($message->data['user'])) {
-            return 'Done! ' . $this->state->getPlayerCount() . '/' . $this->state->getPlayersNeeded();
+            return 'Left! ' . $this->state->getPlayerCount() . '/' . $this->state->getPlayersNeeded();
         } else if (!$this->amI($message)) {
             // Troll
             return 'Try /quit!';
