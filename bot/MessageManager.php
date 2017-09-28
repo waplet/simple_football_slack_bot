@@ -13,8 +13,7 @@ class MessageManager
     private $client;
     private $state;
 
-    // private static $prepends = ['!', '?', ','];
-    private static $prepends = '!';
+    private static $prepends = ['!', '?', ',']; // Can be only in length of 1
     private static $commands = [
         'join',
         'j',
@@ -49,11 +48,11 @@ class MessageManager
             return null;
         }
 
-        if (mb_strpos($messageText, self::$prepends) !== 0) {
+        if (!in_array(mb_substr($messageText, 0, 1), self::$prepends)) {
             return null;
         }
 
-        $messageTextRaw = mb_substr($messageText, mb_strlen(self::$prepends));
+        $messageTextRaw = mb_substr($messageText, 1);
         $messageTextRaw = mb_strtolower($messageTextRaw);
 
         switch ($messageTextRaw) {
@@ -114,7 +113,7 @@ class MessageManager
     {
         if ($this->state->leave($message->data['user'])) {
             return 'Done! ' . $this->state->getPlayerCount() . '/' . $this->state->getPlayersNeeded();
-        } else if ($this->state->getPlayerCount() === 0) {
+        } else if (!$this->amI($message)) {
             // Troll
             return 'Try /quit!';
         }
@@ -137,7 +136,7 @@ class MessageManager
 
     private function onAmI(Message $message): string
     {
-        return in_array($message->data['user'], $this->state->getJoinedPlayers(), true)
+        return $this->amI($message)
             ? 'Yes'
             : 'No';
     }
@@ -165,5 +164,10 @@ class MessageManager
     private function onPing(Message $message): string
     {
         return 'Pong!';
+    }
+
+    private function amI($message): bool
+    {
+        return in_array($message->data['user'], $this->state->getJoinedPlayers(), true);
     }
 }
