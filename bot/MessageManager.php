@@ -2,11 +2,9 @@
 
 namespace w\Bot;
 
-use Slack\Channel;
 use Slack\Message\Message;
 use Slack\Message\MessageBuilder;
 use Slack\RealTimeClient;
-use Slack\User;
 
 class MessageManager
 {
