@@ -123,7 +123,9 @@ class MessageManager
     {
         $joined = $this->state->getJoinedPlayers();
 
-        if ($this->state->start($message->data['user'])) {
+        if (!$this->state->isManager($message->data['user'])) {
+            return 'You are not manager!';
+        } elseif ($this->state->start($message->data['user'])) {
             return 'Go go go - Play! ' . implode(' ', array_map(function ($username) {
                     return '<@' . $username . '>';
                 }, $joined));
@@ -141,9 +143,13 @@ class MessageManager
 
     private function onClear(Message $message): string
     {
-        return $this->state->clear($message->data['user'])
-            ? 'Cleared! 0/' . $this->state->getPlayersNeeded()
-            : 'You are not manager!';
+        if (!$this->state->isManager($message->data['user'])) {
+            return 'You are not manager!';
+        }
+
+        $this->state->clear($message->data['user']);
+
+        return 'Cleared! 0/' . $this->state->getPlayersNeeded();
     }
 
     private function onStatus(Message $message): string

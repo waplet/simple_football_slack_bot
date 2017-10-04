@@ -90,10 +90,6 @@ class FootballState
 
     public function start($player): bool
     {
-        if (!$this->isManager($player)) {
-            return false;
-        }
-
         if ($this->getPlayerCount() != $this->playersNeeded) {
             return false;
         }
@@ -116,10 +112,6 @@ class FootballState
 
     public function clear($username): bool
     {
-        if (!$this->isManager($username)) {
-            return false;
-        }
-
         $this->playersJoined = [];
 
         return true;
