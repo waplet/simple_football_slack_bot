@@ -156,7 +156,7 @@ class MessageManager
                     return '<@' . $userId . '>';
                 }, $this->state->getJoinedPlayers()))
             )
-            : 'None';
+            : 'None. Type !join to start match!';
     }
 
     private function onPing(Message $message): string
