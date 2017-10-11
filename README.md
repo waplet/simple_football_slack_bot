@@ -2,10 +2,11 @@
 
     cp .env.example .env
     // Populate your tokens and user ids
-    $ php index.php
+    composer install
+    ($ chmod +x ./run.sh) // Optional if not runnable
+    $ ./run.sh
     // Add to slack bots
     // invite to channel
     !help // Into slack channel
-
 # Requirements
 php7+
