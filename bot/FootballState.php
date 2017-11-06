@@ -55,9 +55,9 @@ class FootballState
             return false;
         }
 
-        $this->playersJoined = array_filter($this->playersJoined, function ($currentPlayer) use ($player) {
+        $this->playersJoined = array_values(array_filter($this->playersJoined, function ($currentPlayer) use ($player) {
             return $currentPlayer !== $player;
-        });
+        }));
 
         return true;
     }
