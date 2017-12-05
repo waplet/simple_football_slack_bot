@@ -3,8 +3,6 @@
 namespace w\Bot;
 
 use Slack\Message\Message;
-use Slack\Message\MessageBuilder;
-use Slack\RealTimeClient;
 
 class MessageManager extends AbstractMessageManager
 {
@@ -56,6 +54,8 @@ class MessageManager extends AbstractMessageManager
         if (!$this->state->isManager($message->data['user'])) {
             return 'You are not manager!';
         } elseif ($this->state->start($message->data['user'])) {
+            $this->client->emit('game_started', [$message]);
+
             return 'Go go go - Play! ' . implode(' ', array_map(function ($username) {
                     return '<@' . $username . '>';
                 }, $joined));

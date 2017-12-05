@@ -13,6 +13,7 @@ class PrivateMessageManager extends AbstractMessageManager
         'mg' => 'onMyGames',
         'list' => 'onList',
         'update' => 'onUpdate',
+        'deleteall' => 'onDeleteAll',
     ];
 
     /**
@@ -46,9 +47,9 @@ class PrivateMessageManager extends AbstractMessageManager
         foreach ($unresolvedGames as $game) {
             $result .= 'Game ID: *#' . $game['id'] . "*\n"
                 . "\t`,update " . $game['id'] . " A`\n"
-                . "\tTeam *A*: <@" . $game['player_1'] . "> <@" . $game['player_2'] . "> \n"
+                . "\tTeam *A*: <@" . $game['player_1'] . "> <@" . $game['player_2'] . ">\n"
                 . "\t`,update " . $game['id'] . " B`\n"
-                . "\tTeam *B*: <@" . $game['player_3'] . "> <@" . $game['player_4'] . "> `,update " . $game['id'] . " B`\n"
+                . "\tTeam *B*: <@" . $game['player_3'] . "> <@" . $game['player_4'] . ">\n"
                 . "==========================="
                 . "\n";
         }
@@ -97,5 +98,12 @@ class PrivateMessageManager extends AbstractMessageManager
         }
 
         return 'Could not update game - *' . $gameId . '*!';
+    }
+
+    protected function onDeleteAll(Message $message)
+    {
+        $this->state->db->deleteAllOwnerGames($message->data['user']);
+
+        return 'Done!';
     }
 }

@@ -57,5 +57,20 @@ $client->on('message', function (\Slack\Payload $data) use ($client, $messageMan
     });
 });
 
+$client->on('game_started', function (\Slack\Message\Message $message) use ($client, $privateMessageManager) {
+    $client->getDMByUserId($message->data['user'])->then(function (DirectMessageChannel $channel) use ($client, $privateMessageManager, $message) {
+        $message = clone $message;
+        $message->data['text'] = ',list';
+
+        $responseBuilder = $privateMessageManager->parseMessage($message);
+
+        if (is_null($responseBuilder)) {
+            return;
+        }
+
+        $response = $responseBuilder->setChannel($channel)->create();
+        $client->postMessage($response);
+    });
+});
 echo "Started and running...\n";
 $loop->run();

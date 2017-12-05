@@ -262,4 +262,17 @@ class Database extends \SQLite3
 
         return true;
     }
+
+    /**
+     * @param int $ownerId
+     */
+    public function deleteAllOwnerGames($ownerId)
+    {
+        $query = $this->prepare('
+          DELETE FROM games
+          WHERE play_id IN (SELECT id FROM plays WHERE owner = :ownerId)
+        ');
+        $query->bindParam('ownerId', $ownerId);
+        $query->execute();
+    }
 }
