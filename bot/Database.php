@@ -18,10 +18,10 @@ class Database extends \SQLite3
         $query = $this->prepare('SELECT id FROM users WHERE id = :userId');
         $query->bindParam('userId', $userId);
 
-        $data = $query->execute();
+        $data = $query->execute()->fetchArray(SQLITE3_ASSOC);
         $query->close();
 
-        if ($data) {
+        if (!empty($data)) {
             return true;
         }
 
@@ -55,6 +55,7 @@ class Database extends \SQLite3
      */
     public function incrementUserGames($userId, $gamesPlayed, $gamesWon)
     {
+        echo "te";
         if (!$this->hasUser($userId)) {
             if (!$this->createUser($userId)) {
                 throw new \Exception('Could not create user!');
@@ -84,10 +85,11 @@ class Database extends \SQLite3
     /**
      * @return array
      */
-    public function getStats()
+    public function getTopList()
     {
         $query = $this->prepare('
             SELECT * from users
+            ORDER BY games_won desc, games_played ASC
         ');
         $result = $query->execute();
 
@@ -151,7 +153,7 @@ class Database extends \SQLite3
      * @param string $owner
      * @return int
      */
-    private function createPlay($owner) :int
+    private function createPlay($owner): int
     {
         $query = $this->prepare('INSERT INTO plays(owner) VALUES(:owner)');
         $query->bindParam('owner', $owner);
@@ -179,5 +181,85 @@ class Database extends \SQLite3
         $query->bindParam('player3', $player3);
         $query->bindParam('player4', $player4);
         $query->execute();
+    }
+
+    public function getOwnerUnresolvedGames($ownerId)
+    {
+        $query = $this->prepare('
+            SELECT g.* FROM games g
+              INNER JOIN plays p ON p.id = g.play_id
+              WHERE p.owner = :ownerId
+              ORDER BY g.play_id
+        ');
+        $query->bindParam('ownerId', $ownerId);
+
+        $result = $query->execute();
+
+        $data = [];
+        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+            $data[] = $row;
+        }
+
+        return $data;
+    }
+
+    /**
+     * @param $gameId
+     * @param $ownerId
+     * @return array|bool
+     */
+    public function getOwnerGame($gameId, $ownerId)
+    {
+        $query = $this->prepare('
+            SELECT g.* FROM games g
+              INNER JOIN plays p ON p.id = g.play_id
+              WHERE p.owner = :ownerId
+                AND g.id = :gameId
+              ORDER BY g.play_id
+        ');
+        $query->bindParam('ownerId', $ownerId);
+        $query->bindParam('gameId', $gameId);
+
+        $result = $query->execute();
+
+        if (!$result) {
+            return false;
+        }
+
+        return $result->fetchArray(SQLITE3_ASSOC);
+    }
+
+    /**
+     * @param int $gameId
+     */
+    public function deleteGame($gameId)
+    {
+        $query = $this->prepare('DELETE FROM games where id = :gameId');
+        $query->bindParam('gameId', $gameId);
+        $query->execute();
+    }
+
+    /**
+     * @param int $gameId
+     * @param string $ownerId
+     * @param bool $teamAWon
+     * @return bool
+     */
+    public function updateOwnerGame($gameId, $ownerId, $teamAWon = true)
+    {
+        $game = $this->getOwnerGame($gameId, $ownerId);
+
+        if (!$game) {
+            return false;
+        }
+
+        $this->incrementUserGames($game['player_1'], 1, $teamAWon ? 1 : 0);
+        $this->incrementUserGames($game['player_2'], 1, $teamAWon ? 1 : 0);
+        $this->incrementUserGames($game['player_3'], 1, $teamAWon ? 0 : 1);
+        $this->incrementUserGames($game['player_4'], 1, $teamAWon ? 0 : 1);
+
+        $this->deleteGame($game['id']);
+
+        return true;
     }
 }

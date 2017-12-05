@@ -5,6 +5,7 @@
 Populate your tokens and user ids
 
     composer install
+    php scripts/create_db.php
     ($ chmod +x ./run.sh) // Optional if not runnable
     $ ./run.sh
 

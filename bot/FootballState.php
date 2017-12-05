@@ -15,7 +15,7 @@ class FootballState
     /**
      * @var null|\SQLite3
      */
-    private $db = null;
+    public $db = null;
 
     /**
      * FootballState constructor.
@@ -121,7 +121,7 @@ class FootballState
         return $this->playersNeeded;
     }
 
-    public function clear($username): bool
+    public function clear(): bool
     {
         $this->playersJoined = [];
 

@@ -23,8 +23,9 @@ $client->connect()->then(function () use ($client) {
     });
 });
 $messageManager = new \w\Bot\MessageManager($footballState, $client);
+$privateMessageManager = new \w\Bot\PrivateMessageManager($footballState, $client);
 
-$client->on('message', function (\Slack\Payload $data) use ($client, $messageManager) {
+$client->on('message', function (\Slack\Payload $data) use ($client, $messageManager, $privateMessageManager) {
     var_dump($data);
     $message = new \Slack\Message\Message($client, $data->getData());
     if (isset($data['subtype']) && $data['subtype'] == 'message_changed') {
@@ -32,32 +33,27 @@ $client->on('message', function (\Slack\Payload $data) use ($client, $messageMan
         return;
     }
 
-    $message->getUser()->then(function (\Slack\User $user) use ($messageManager, $message, $client) {
-        $responseBuilder = $messageManager->parseMessage($user->getUsername(), $message);
+    $client->getChannelGroupOrDMByID($message->data['channel'])->then(function (ChannelInterface $channel)  use (
+        $client,
+        $messageManager,
+        $privateMessageManager,
+        $message
+    ) {
+        if ($channel instanceof \Slack\Channel) {
+            $responseBuilder = $messageManager->parseMessage($message);
+        } else if ($channel instanceof DirectMessageChannel) {
+            $responseBuilder = $privateMessageManager->parseMessage($message);
+        } else {
+            echo "Exiting... Incorrect channel given!";
+            return;
+        }
 
         if (is_null($responseBuilder)) {
             return;
         }
 
-        $client->getChannelGroupOrDMByID($message->data['channel'])->then(function (ChannelInterface $channel)  use ($client, $responseBuilder) {
-            $response = $responseBuilder->setChannel($channel)->create();
-
-            $client->postMessage($response);
-        });
-
-        // $message->getChannel()->then(function (\Slack\Channel $channel) use ($client, $responseBuilder) {
-        //
-        // }, function (\Slack\ApiException $e) use ($client, $responseBuilder, $message) {
-        //     echo $e->getMessage() . " - Rejection!\n";
-        //
-        //     $client->getDMById($message->data['channel'])->then(function (DirectMessageChannel $channel) use ($client, $responseBuilder) {
-        //         $response = $responseBuilder->setChannel($channel)->create();
-        //
-        //         $client->postMessage($response);
-        //     }, function (\Slack\ApiException $e) {
-        //         echo $e->getMessage() . " - rejected1\n";
-        //     });
-        // });
+        $response = $responseBuilder->setChannel($channel)->create();
+        $client->postMessage($response);
     });
 });
 
