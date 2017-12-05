@@ -13,6 +13,11 @@ class FootballState
     private $playersNeeded = 4;
 
     /**
+     * @var null|\SQLite3
+     */
+    private $db = null;
+
+    /**
      * FootballState constructor.
      * @param int $playersNeeded
      */
@@ -23,6 +28,10 @@ class FootballState
         }
 
         $this->playersNeeded = $playersNeeded;
+        // Test
+        $this->playersJoined = ['U7A4L7NN6', 1,2,3];
+
+        $this->db = new Database();
 
         return $this;
     }
@@ -93,6 +102,8 @@ class FootballState
         if ($this->getPlayerCount() != $this->playersNeeded) {
             return false;
         }
+
+        $this->db->createGameInstances($this->getJoinedPlayers());
 
         $this->lastPlayTimestamp = time();
         $this->playersJoined = [];

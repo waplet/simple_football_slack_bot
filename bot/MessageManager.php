@@ -8,10 +8,17 @@ use Slack\RealTimeClient;
 
 class MessageManager
 {
+    /**
+     * @var RealTimeClient
+     */
     private $client;
+
+    /**
+     * @var FootballState
+     */
     private $state;
 
-    private static $prepends = ['!', '?', ',']; // Can be only in length of 1
+    private static $prepends = [',']; // Can be only in length of 1
     private static $commands = [
         'join',
         'j',

@@ -1,15 +1,12 @@
 <?php
 
 use React\EventLoop\Factory;
+use Slack\ChannelInterface;
+use Slack\ClientObject;
+use Slack\DirectMessageChannel;
 use w\Bot\FootballState;
 
-require __DIR__ . '/vendor/autoload.php';
-$dotenv = new Dotenv\Dotenv(__DIR__);
-$dotenv->load();
-$dotenv->required('BOT_TOKEN');
-
-date_default_timezone_set('Europe/Riga');
-
+include_once __DIR__ . '/init.php';
 $footballState = new FootballState();
 $loop = Factory::create();
 
@@ -42,11 +39,25 @@ $client->on('message', function (\Slack\Payload $data) use ($client, $messageMan
             return;
         }
 
-        $message->getChannel()->then(function (\Slack\Channel $channel) use ($client, $responseBuilder) {
+        $client->getChannelGroupOrDMByID($message->data['channel'])->then(function (ChannelInterface $channel)  use ($client, $responseBuilder) {
             $response = $responseBuilder->setChannel($channel)->create();
 
             $client->postMessage($response);
         });
+
+        // $message->getChannel()->then(function (\Slack\Channel $channel) use ($client, $responseBuilder) {
+        //
+        // }, function (\Slack\ApiException $e) use ($client, $responseBuilder, $message) {
+        //     echo $e->getMessage() . " - Rejection!\n";
+        //
+        //     $client->getDMById($message->data['channel'])->then(function (DirectMessageChannel $channel) use ($client, $responseBuilder) {
+        //         $response = $responseBuilder->setChannel($channel)->create();
+        //
+        //         $client->postMessage($response);
+        //     }, function (\Slack\ApiException $e) {
+        //         echo $e->getMessage() . " - rejected1\n";
+        //     });
+        // });
     });
 });
 
