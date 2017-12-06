@@ -7,8 +7,6 @@ include_once __DIR__ . '/init.php';
 $footballState = new FootballState();
 $loop = Factory::create();
 
-print_r($_POST);
-
 $client = new Slack\ApiClient($loop);
 $client->setToken(getenv('APP_BOT_OAUTH_TOKEN'));
 
