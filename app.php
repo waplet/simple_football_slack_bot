@@ -10,13 +10,43 @@ $loop = Factory::create();
 $client = new Slack\ApiClient($loop);
 $client->setToken(getenv('APP_BOT_OAUTH_TOKEN'));
 
+$payload = null;
+$input = false;
+try {
+    $input = file_get_contents('php://input');
+    $payload = \Slack\Payload::fromJSON($input);
+} catch (UnexpectedValueException $e) {
+    if (!isset($_POST['payload'])) {
+        echo $e->getMessage();
+        return;
+    }
+
+    $payload = \Slack\Payload::fromJSON($_POST['payload']);
+}
 $controller = \w\Bot\controllers\BaseController::getController();
 /** @var \w\Bot\controllers\BaseController $controllerInstance */
-$controllerInstance = new $controller($client, $footballState->db, $footballState);
-$response = $controllerInstance->actionProcess();
-if (!is_null($response)) {
-    echo $response;
+$controllerInstance = new $controller($client, $footballState->db, $footballState, $payload);
+
+try {
+    $response = $controllerInstance->process();
+} catch (InvalidArgumentException $e) {
+    echo $e->getMessage();
     die;
+}
+if (!is_null($response)) {
+    if ($response instanceof \w\Bot\structures\HTTPResponse) {
+        echo $response->message;
+    } else if (is_string($response)) {
+        echo $response;
+    } else if ($response instanceof \w\Bot\structures\SlackResponse) {
+        $client->getChannelById(getenv('APP_BOT_CHANNEL'))->then(function (\Slack\Channel $channel) use ($client, $response) {
+            $client->send($response->message, $channel);
+        });
+    } else if ($response instanceof \Slack\Message\MessageBuilder) {
+        $client->getChannelById(getenv('APP_BOT_CHANNEL'))->then(function (\Slack\Channel $channel) use ($client, $response) {
+            $client->postMessage($response->setChannel($channel)->create());
+        });
+    }
 }
 
 // $client->getChannelById(getenv('APP_BOT_CHANNEL'))->then(function (\Slack\Channel $channel) use ($client) {
