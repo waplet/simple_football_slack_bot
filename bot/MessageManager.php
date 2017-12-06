@@ -7,10 +7,10 @@ use Slack\Message\Message;
 class MessageManager extends AbstractMessageManager
 {
     protected static $commands = [
-        'join' => 'onJoin',
-        'j' => 'onJoin',
-        'leave' => 'onLeave',
-        'l' => 'onLeave',
+//        'join' => 'onJoin',
+//        'j' => 'onJoin',
+//        'leave' => 'onLeave',
+//        'l' => 'onLeave',
         'start' => 'onStart',
         's' => 'onStart',
         'ami' => 'onAmI',
@@ -22,30 +22,30 @@ class MessageManager extends AbstractMessageManager
         'top' => 'onTop',
     ];
 
-    protected function onJoin(Message $message): string
-    {
-        if ($this->state->getPlayerCount() === $this->state->getPlayersNeeded()) {
-            return 'Full! ' . $this->state->getPlayerCount() . '/' . $this->state->getPlayersNeeded();
-        }
+//    protected function onJoin(Message $message): string
+//    {
+//        if ($this->state->getPlayerCount() === $this->state->getPlayersNeeded()) {
+//            return 'Full! ' . $this->state->getPlayerCount() . '/' . $this->state->getPlayersNeeded();
+//        }
+//
+//        if (!$this->state->join($message->data['user'])) {
+//            return 'You have already joined!';
+//        }
+//
+//        return 'Joined! ' . $this->state->getPlayerCount() . '/' . $this->state->getPlayersNeeded();
+//    }
 
-        if (!$this->state->join($message->data['user'])) {
-            return 'You have already joined!';
-        }
-
-        return 'Joined! ' . $this->state->getPlayerCount() . '/' . $this->state->getPlayersNeeded();
-    }
-
-    protected function onLeave(Message $message): string
-    {
-        if ($this->state->leave($message->data['user'])) {
-            return 'Left! ' . $this->state->getPlayerCount() . '/' . $this->state->getPlayersNeeded();
-        } else if (!$this->amI($message)) {
-            // Troll
-            return 'Try /quit!';
-        }
-
-        return 'Meh! ' . $this->state->getPlayerCount() . '/' . $this->state->getPlayersNeeded();
-    }
+//    protected function onLeave(Message $message): string
+//    {
+//        if ($this->state->leave($message->data['user'])) {
+//            return 'Left! ' . $this->state->getPlayerCount() . '/' . $this->state->getPlayersNeeded();
+//        } else if (!$this->state->amI($message->data['user'])) {
+//            // Troll
+//            return 'Try /quit!';
+//        }
+//
+//        return 'Meh! ' . $this->state->getPlayerCount() . '/' . $this->state->getPlayersNeeded();
+//    }
 
     protected function onStart(Message $message): string
     {
@@ -66,7 +66,7 @@ class MessageManager extends AbstractMessageManager
 
     protected function onAmI(Message $message): string
     {
-        return $this->amI($message)
+        return $this->state->amI($message->data['user'])
             ? 'Yes'
             : 'No';
     }
@@ -98,11 +98,6 @@ class MessageManager extends AbstractMessageManager
     protected function onPing(Message $message): string
     {
         return 'Pong!';
-    }
-
-    protected function amI($message): bool
-    {
-        return in_array($message->data['user'], $this->state->getJoinedPlayers(), true);
     }
 
     protected function onTop(Message $message)

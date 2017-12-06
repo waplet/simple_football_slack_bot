@@ -2,6 +2,11 @@
 
 namespace w\Bot;
 
+use Slack\Message\Message;
+use Slack\Message\MessageBuilder;
+use w\Bot\structures\Action;
+use w\Bot\structures\ActionAttachment;
+
 class FootballState
 {
     private $lastPlayTimestamp = 0;
@@ -19,19 +24,20 @@ class FootballState
 
     /**
      * FootballState constructor.
-     * @param int $playersNeeded
      */
-    public function __construct($playersNeeded = 4)
+    public function __construct()
     {
-        if ($playersNeeded < 0 || $playersNeeded > 6) {
-            $playersNeeded = 4;
-        }
+        $this->db = new Database();
 
-        $this->playersNeeded = $playersNeeded;
         // Test
         $this->playersJoined = ['U7A4L7NN6', 1,2,3];
+        $this->db->clearActiveGame();
+        $this->db->createActiveGame('U7A4L7NN6');
+        $this->playersJoined = [1,2,3];
+        foreach ($this->playersJoined as $player) {
+            $this->db->addPlayer($player);
+        }
 
-        $this->db = new Database();
 
         return $this;
     }
@@ -44,13 +50,16 @@ class FootballState
      */
     public function join($player): bool
     {
-        if (in_array($player, $this->playersJoined, true)) {
+        if (in_array($player, $this->getJoinedPlayers(), true)) {
             return false;
         }
 
-        $this->playersJoined[] = $player;
+        if (!$this->db->getActiveGame()) {
+            return $this->db->createActiveGame($player);
+        }
 
-        return true;
+        $this->playersJoined[] = $player;
+        return $this->db->addPlayer($player);
     }
 
     /**
@@ -60,20 +69,19 @@ class FootballState
      */
     public function leave($player): bool
     {
-        if (!in_array($player, $this->playersJoined)) {
+        if (!in_array($player, $this->getJoinedPlayers())) {
             return false;
         }
 
         $this->playersJoined = array_values(array_filter($this->playersJoined, function ($currentPlayer) use ($player) {
             return $currentPlayer !== $player;
         }));
-
-        return true;
+        return $this->db->removePlayer($player);
     }
 
     public function getPlayerCount(): int
     {
-        return count($this->playersJoined);
+        return count($this->getJoinedPlayers());
     }
 
     /**
@@ -90,7 +98,7 @@ class FootballState
             return false;
         }
 
-        if ($player === $this->playersJoined[0]) {
+        if (in_array($player, $this->getJoinedPlayers())) {
             return true;
         }
 
@@ -103,17 +111,23 @@ class FootballState
             return false;
         }
 
-        $this->db->createGameInstances($this->getJoinedPlayers());
+//        $this->db->createGameInstances($this->getJoinedPlayers());
 
-        $this->lastPlayTimestamp = time();
-        $this->playersJoined = [];
+//        $this->lastPlayTimestamp = time();
+//        $this->playersJoined = [];
+        $this->db->startGame();
 
         return true;
     }
 
+    public function finish()
+    {
+        // TODO
+    }
+
     public function getJoinedPlayers(): array
     {
-        return $this->playersJoined;
+        return $this->db->getPlayers();
     }
 
     public function getPlayersNeeded(): int
@@ -124,7 +138,51 @@ class FootballState
     public function clear(): bool
     {
         $this->playersJoined = [];
+        $this->db->clearActiveGame();
 
         return true;
+    }
+
+    public function getMessage(MessageBuilder $messageBuilder): Message
+    {
+        $text = "Join to play a game!\n"
+            . "Status: *" . $this->db->getStatus() . "*\n"
+            . "Player joined: " . implode(' ', array_map(function ($userId) {
+                return '<@' . $userId . '>';
+            }, $this->getJoinedPlayers()))
+        ;
+
+        $messageBuilder->setText($text);
+
+        $attachment = new ActionAttachment('Do you want to play a game?', 'Join', 'You are unable to join', '#3AA3E3');
+        $attachment->setCallbackId('game');
+
+        if ($this->getPlayerCount() != $this->getPlayersNeeded()) {
+            $action = new Action("game", "Join", "button", "join" , "primary");
+            $attachment->addAction($action);
+        }
+        if ($this->db->getStatus() != 'started') {
+            $action = new Action("game", "Leave", "button", "leave" , "danger");
+            $attachment->addAction($action);
+        }
+        $action = new Action("game", "Cancel", "button", "cancel"); // Add confirm
+        $attachment->addAction($action);
+
+        if ($this->getPlayerCount() == $this->getPlayersNeeded()) {
+            $action = new Action("game", "Start", "button", "leave");
+            $attachment->addAction($action);
+        }
+        $messageBuilder->addAttachment($attachment);
+
+        return $messageBuilder->create();
+    }
+
+    /**
+     * @param string $player
+     * @return bool
+     */
+    public function amI($player): bool
+    {
+        return in_array($player, $this->getJoinedPlayers(), true);
     }
 }

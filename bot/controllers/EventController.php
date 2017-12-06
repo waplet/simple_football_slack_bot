@@ -42,19 +42,13 @@ class EventController extends BaseController
         if ($message->data['user'] == getenv('APP_BOT_USER')) {
             return null;
         }
+        // Skip changes
+        if (isset($message->data['subtype']) && $message->data['subtype'] == 'message_changed') {
+            return null;
+        }
 
         if ($message->data['text'] == ',begin') {
-            $messageBuilder = $this->client->getMessageBuilder();
-            $messageBuilder->setText('Join to play a game');
-
-            $attachment = new ActionAttachment('Do you want to play a game?', 'Join', 'You are unable to join', '#3AA3E3');
-            $attachment->setCallbackId('game');
-
-            $action = new Action("game", "Join", "button", "join" , "success");
-            $attachment->addAction($action);
-            $messageBuilder->addAttachment($attachment);
-
-            return $messageBuilder;
+            return $this->footballState->getMessage($this->client->getMessageBuilder());
         }
 
         $response = new SlackResponse();

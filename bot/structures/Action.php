@@ -24,4 +24,12 @@ class Action extends DataObject
             $this->data['style'] = $style;
         }
     }
+
+    /**
+     * @return string
+     */
+    public function getValue() :string
+    {
+        return $this->data['value'];
+    }
 }

@@ -264,6 +264,91 @@ class Database extends \SQLite3
     }
 
     /**
+     * @return array|bool
+     */
+    public function getActiveGame()
+    {
+        $result = $this->prepare('
+            SELECT * FROM active_game
+        ')->execute()->fetchArray();
+
+        if (!$result) {
+            return false;
+        }
+
+        return $result;
+    }
+
+    public function getStatus()
+    {
+        $game = $this->getActiveGame();
+
+        if (!$game) {
+            return 'none';
+        }
+
+        return $game['status'];
+    }
+
+    /**
+     * @return string[]
+     */
+    public function getPlayers()
+    {
+        $game = $this->getActiveGame();
+
+        if (!$game) {
+            return [];
+        }
+
+        return json_decode($game['players'], JSON_OBJECT_AS_ARRAY);
+    }
+
+    public function addPlayer($player)
+    {
+        $game = $this->getActiveGame();
+
+        if (!$game) {
+            return false;
+        }
+
+        $players = (array)json_decode($game['players'], JSON_OBJECT_AS_ARRAY);
+        $players = array_values($players);
+        $players[] = $player;
+
+        $query = $this->prepare('UPDATE active_game set players = :players');
+        $players = json_encode($players);
+        $query->bindParam('players', $players);
+        $query->execute();
+
+        return true;
+    }
+
+    public function removePlayer($player)
+    {
+        $game = $this->getActiveGame();
+
+        if (!$game) {
+            return false;
+        }
+
+        $players = (array)json_decode($game['players'], JSON_OBJECT_AS_ARRAY);
+        $playersAfter = array_values(array_filter($players, function ($currentPlayer) use ($player) {
+            return $currentPlayer !== $player;
+        }));
+
+        if (count($players) == count($playersAfter)) {
+            return false;
+        }
+
+        $query = $this->prepare('UPDATE active_game set players = :players');
+        $query->bindParam('players', json_encode($players));
+        $query->execute();
+
+        return true;
+    }
+
+    /**
      * @param int $ownerId
      */
     public function deleteAllOwnerGames($ownerId)
@@ -274,5 +359,34 @@ class Database extends \SQLite3
         ');
         $query->bindParam('ownerId', $ownerId);
         $query->execute();
+    }
+
+    public function clearActiveGame()
+    {
+        $this->exec('DELETE FROM active_game');
+
+        return true;
+    }
+
+    public function createActiveGame($player)
+    {
+        $query = $this->prepare('
+            INSERT INTO active_game(players, status) 
+            VALUES(:players, \'pending\')
+        ');
+        $players = json_encode([$player]);
+        $query->bindParam('players', $players);
+        $query->execute();
+
+        return true;
+    }
+
+    public function startGame()
+    {
+        $this->prepare('
+            UPDATE active_game SET status = \'started\'
+        ')->execute();
+
+        return true;
     }
 }
