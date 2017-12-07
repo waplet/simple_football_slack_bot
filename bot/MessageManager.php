@@ -12,11 +12,19 @@ class MessageManager extends AbstractMessageManager
         'begin' => 'onBegin',
     ];
 
+    /**
+     * @param Message $message
+     * @return string
+     */
     protected function onPing(Message $message): string
     {
         return 'Pong!';
     }
 
+    /**
+     * @param Message $message
+     * @return string
+     */
     protected function onTop(Message $message)
     {
         $userList = $this->state->db->getTopList();

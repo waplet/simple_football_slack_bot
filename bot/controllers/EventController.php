@@ -16,11 +16,17 @@ class EventController extends BaseController
         'message' => ['actionMessage', Message::class],
     ];
 
+    /**
+     * @return string
+     */
     public function actionUrlVerification()
     {
         return $this->payload['challenge'];
     }
 
+    /**
+     * @return null|\Slack\Message\MessageBuilder|string
+     */
     public function processEvents()
     {
         $event = $this->payload['event'];
@@ -33,6 +39,10 @@ class EventController extends BaseController
         return call_user_func([$this, $this->events[$event['type']][0]], new $class($this->client, $event));
     }
 
+    /**
+     * @param Message $message
+     * @return null|\Slack\Message\MessageBuilder|string
+     */
     public function actionMessage(Message $message)
     {
         // Skip changes

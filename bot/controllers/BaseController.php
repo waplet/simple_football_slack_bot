@@ -3,9 +3,12 @@
 namespace w\Bot\controllers;
 
 use Slack\ApiClient;
+use Slack\Message\MessageBuilder;
 use Slack\Payload;
 use w\Bot\Database;
 use w\Bot\FootballState;
+use w\Bot\structures\HTTPResponse;
+use w\Bot\structures\SlackResponse;
 
 abstract class BaseController
 {
@@ -27,8 +30,7 @@ abstract class BaseController
         Database $db,
         FootballState $footballState,
         Payload $payload
-    )
-    {
+    ) {
         $this->client = $client;
         $this->db = $db;
         $this->footballState = $footballState;
@@ -36,6 +38,7 @@ abstract class BaseController
     }
 
     /**
+     * Returns controller Class name
      * @return string
      */
     public static function getController()
@@ -53,14 +56,20 @@ abstract class BaseController
         return self::$routes['/default'];
     }
 
+    /**
+     * Returns everything a controller might return
+     * @return HTTPResponse|SlackResponse|MessageBuilder|string|null
+     */
     public function process()
     {
         // Log request
-        file_put_contents(__DIR__ . '/events.txt', static::class . "\n" . json_encode($this->payload->getData(), JSON_PRETTY_PRINT) . "\n", FILE_APPEND);
+        file_put_contents(__DIR__ . '/events.txt',
+            static::class . "\n" . json_encode($this->payload->getData(), JSON_PRETTY_PRINT) . "\n", FILE_APPEND);
 
         if (!isset($this->types[$this->payload['type']])) {
             throw new \InvalidArgumentException('Invalid payload type received!');
         }
 
         return call_user_func([$this, $this->types[$this->payload['type']]]);
-    }}
+    }
+}

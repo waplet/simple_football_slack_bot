@@ -3,19 +3,12 @@
 namespace w\Bot;
 
 use Slack\Message\Attachment;
-use Slack\Message\Message;
 use Slack\Message\MessageBuilder;
 use w\Bot\structures\Action;
 use w\Bot\structures\ActionAttachment;
 
 class FootballState
 {
-    private $lastPlayTimestamp = 0;
-
-    private $isLocked = false;
-
-    private $playersJoined = [];
-
     private $playersNeeded = 4;
 
     /**
@@ -29,17 +22,6 @@ class FootballState
     public function __construct()
     {
         $this->db = new Database();
-
-        // Test
-        $this->playersJoined = ['U7A4L7NN6', 1,2,3];
-        // $this->db->clearActiveGame();
-        // $this->db->createActiveGame('U7A4L7NN6');
-        // $this->playersJoined = [1,2,3];
-        // foreach ($this->playersJoined as $player) {
-        //     $this->db->addPlayer($player);
-        // }
-
-
         return $this;
     }
 
@@ -59,7 +41,6 @@ class FootballState
             return $this->db->createActiveGame($player);
         }
 
-        $this->playersJoined[] = $player;
         return $this->db->addPlayer($player);
     }
 
@@ -74,12 +55,12 @@ class FootballState
             return false;
         }
 
-        $this->playersJoined = array_values(array_filter($this->playersJoined, function ($currentPlayer) use ($player) {
-            return $currentPlayer !== $player;
-        }));
         return $this->db->removePlayer($player);
     }
 
+    /**
+     * @return int
+     */
     public function getPlayerCount(): int
     {
         return count($this->getJoinedPlayers());
@@ -106,6 +87,10 @@ class FootballState
         return false;
     }
 
+    /**
+     * @param $player
+     * @return bool
+     */
     public function start($player): bool
     {
         if ($this->getPlayerCount() != $this->playersNeeded) {
@@ -122,29 +107,36 @@ class FootballState
         return true;
     }
 
-    public function finish()
-    {
-        // TODO
-    }
-
+    /**
+     * @return array
+     */
     public function getJoinedPlayers(): array
     {
         return $this->db->getPlayers();
     }
 
+    /**
+     * @return int
+     */
     public function getPlayersNeeded(): int
     {
         return $this->playersNeeded;
     }
 
+    /**
+     * @return bool
+     */
     public function clear(): bool
     {
-        $this->playersJoined = [];
         $this->db->clearActiveGame();
 
         return true;
     }
 
+    /**
+     * @param MessageBuilder $messageBuilder
+     * @return MessageBuilder
+     */
     public function getMessage(MessageBuilder $messageBuilder)
     {
         if ($this->db->getStatus() == 'started') {
@@ -163,26 +155,30 @@ class FootballState
         return in_array($player, $this->getJoinedPlayers(), true);
     }
 
+    /**
+     * @param MessageBuilder $messageBuilder
+     * @return MessageBuilder
+     */
     protected function getGameState(MessageBuilder $messageBuilder)
     {
         $text = "Join to play a game!\n"
             . "Status: *" . $this->db->getStatus() . "*\n"
             . "Player joined: " . implode(' ', array_map(function ($userId) {
                 return '<@' . $userId . '>';
-            }, $this->getJoinedPlayers()))
-        ;
+            }, $this->getJoinedPlayers()));
 
         $messageBuilder->setText($text);
 
-        $attachment = new ActionAttachment('Do you want to play a game?', 'Choose one of actions', 'You are unable to join', '#3AA3E3');
+        $attachment = new ActionAttachment('Do you want to play a game?', 'Choose one of actions',
+            'You are unable to join', '#3AA3E3');
         $attachment->setCallbackId('game');
 
         if ($this->getPlayerCount() != $this->getPlayersNeeded()) {
-            $action = new Action("game", "Join", "button", "join" , "primary");
+            $action = new Action("game", "Join", "button", "join", "primary");
             $attachment->addAction($action);
         }
         if ($this->db->getStatus() != 'started') {
-            $action = new Action("game", "Leave", "button", "leave" , "danger");
+            $action = new Action("game", "Leave", "button", "leave", "danger");
             $attachment->addAction($action);
         }
         $action = new Action("game", "Cancel", "button", "cancel"); // Add confirm
@@ -199,6 +195,10 @@ class FootballState
         return $messageBuilder;
     }
 
+    /**
+     * @param MessageBuilder $messageBuilder
+     * @return null|MessageBuilder
+     */
     protected function getPostGameState(MessageBuilder $messageBuilder)
     {
         $gameInstances = $this->db->getActiveGameInstances();
@@ -211,7 +211,7 @@ class FootballState
 
         foreach ($gameInstances as $k => $instance) {
             if ($instance['status'] == 'deleted') {
-                $attachment = new Attachment('Game #' . ($k +1), 'Done!');
+                $attachment = new Attachment('Game #' . ($k + 1), 'Done!');
             } else {
                 $attachment = new ActionAttachment(
                     'Game #' . ($k + 1),
@@ -244,6 +244,9 @@ class FootballState
         return $messageBuilder;
     }
 
+    /**
+     * @return bool
+     */
     public function isFinishedGame()
     {
         $gameInstances = $this->db->getActiveGameInstances();

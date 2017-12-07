@@ -25,7 +25,7 @@ class ActionController extends BaseController
         ],
         'update' => [
             'method' => 'processUpdateActions',
-        ]
+        ],
     ];
 
     public function processInteractiveMessage()
@@ -50,7 +50,6 @@ class ActionController extends BaseController
     {
         $player = $this->payload['user']['id'];
         $action = reset($actions);
-        error_log(print_r($actions, true));
 
         $actions = $this->callbacks['game']['actions'];
         if (!isset($actions[$action->getValue()])) {
@@ -71,12 +70,12 @@ class ActionController extends BaseController
         }
 
         if ($this->footballState->getPlayerCount() === $this->footballState->getPlayersNeeded()) {
-            // 'Full! ' . $this->footballState->getPlayerCount() . '/' . $this->footballState->getPlayersNeeded()
+            // Full!
             return null;
         }
 
         if (!$this->footballState->join($player)) {
-            // 'You have already joined!';
+            // You have already joined!
             return null;
         }
 
@@ -122,6 +121,10 @@ class ActionController extends BaseController
         return 'Cancelled!';
     }
 
+    /**
+     * @param string $player
+     * @return null|GameStateResponse
+     */
     protected function onGameStart($player)
     {
         if (!$this->footballState->isManager($player)) {
@@ -135,6 +138,10 @@ class ActionController extends BaseController
         return new GameStateResponse;
     }
 
+    /**
+     * @param string $player
+     * @return GameStateResponse
+     */
     protected function onGameRefresh($player)
     {
         return new GameStateResponse;
@@ -164,7 +171,7 @@ class ActionController extends BaseController
         $won = $action->getValue();
 
         // Team names
-        if (!in_array($won, ['A', 'B' , '-'])) {
+        if (!in_array($won, ['A', 'B', '-'])) {
             return null;
         }
 

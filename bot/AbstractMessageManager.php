@@ -53,15 +53,21 @@ abstract class AbstractMessageManager
 
         if ($command === 'help') {
             $responseText = $this->onHelp($message);
-        } else if (isset(static::$commands[$command])) {
-            $responseText = call_user_func([$this, static::$commands[$command]], $message, implode(' ', $messageSplit));
         } else {
-            $responseText = "Incorrect message command given, try !help";
+            if (isset(static::$commands[$command])) {
+                $responseText = call_user_func([$this, static::$commands[$command]], $message, implode(' ', $messageSplit));
+            } else {
+                $responseText = "Incorrect message command given, try !help";
+            }
         }
 
         return $responseText;
     }
 
+    /**
+     * @param Message|null $message
+     * @return string
+     */
     private function onHelp(Message $message = null): string
     {
         return implode(', ', array_map(function ($command) {
