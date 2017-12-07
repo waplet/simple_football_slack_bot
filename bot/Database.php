@@ -55,7 +55,6 @@ class Database extends \SQLite3
      */
     public function incrementUserGames($userId, $gamesPlayed, $gamesWon)
     {
-        echo "te";
         if (!$this->hasUser($userId)) {
             if (!$this->createUser($userId)) {
                 throw new \Exception('Could not create user!');
@@ -134,13 +133,13 @@ class Database extends \SQLite3
      * @param array $players
      * @return int
      */
-    public function createGameInstances(array $players)
+    public function createGameInstances($owner, array $players)
     {
         if (count($players) != 4) {
             return -1;
         }
 
-        $playId = $this->createPlay($players[0]);
+        $playId = $this->createPlay($owner);
 
         $this->createGameInstance($playId, $players[0], $players[1], $players[2], $players[3]); // AB CD
         $this->createGameInstance($playId, $players[0], $players[2], $players[1], $players[3]); // AC BD
@@ -241,9 +240,25 @@ class Database extends \SQLite3
 
     /**
      * @param int $gameId
+     * @return bool
+     */
+    public function markGameAsDeleted($gameId)
+    {
+        $query = $this->prepare('UPDATE games SET status = :status WHERE id = :gameId');
+        $query->bindParam('gameId', $gameId);
+        $query->bindValue('status', 'deleted');
+
+        $query->execute();
+
+        return true;
+    }
+
+    /**
+     * @param int $gameId
      * @param string $ownerId
      * @param bool $teamAWon
      * @return bool
+     * @throws \Exception
      */
     public function updateOwnerGame($gameId, $ownerId, $teamAWon = true)
     {
@@ -261,6 +276,45 @@ class Database extends \SQLite3
         $this->deleteGame($game['id']);
 
         return true;
+    }
+
+    /**
+     * @param $gameId
+     * @param bool $teamAWon
+     * @return bool
+     * @throws \Exception
+     */
+    public function updateGame($gameId, $teamAWon = true)
+    {
+        $game = $this->getGame($gameId);
+
+        if (!$game) {
+            return false;
+        }
+
+        $this->incrementUserGames($game['player_1'], 1, $teamAWon ? 1 : 0);
+        $this->incrementUserGames($game['player_2'], 1, $teamAWon ? 1 : 0);
+        $this->incrementUserGames($game['player_3'], 1, $teamAWon ? 0 : 1);
+        $this->incrementUserGames($game['player_4'], 1, $teamAWon ? 0 : 1);
+
+        $this->markGameAsDeleted($game['id']);
+
+        return true;
+    }
+
+    /**
+     * @param int $gameId
+     * @return array
+     */
+    public function getGame($gameId)
+    {
+        $query = $this->prepare('
+            SELECT * FROM games
+            where id = :gameId
+        ');
+        $query->bindParam('gameId', $gameId);
+
+        return $query->execute()->fetchArray(SQLITE3_ASSOC);
     }
 
     /**
@@ -333,16 +387,15 @@ class Database extends \SQLite3
         }
 
         $players = (array)json_decode($game['players'], JSON_OBJECT_AS_ARRAY);
-        $playersAfter = array_values(array_filter($players, function ($currentPlayer) use ($player) {
-            return $currentPlayer !== $player;
-        }));
+        $playersAfter = array_values(array_diff($players, [$player]));
 
         if (count($players) == count($playersAfter)) {
             return false;
         }
 
-        $query = $this->prepare('UPDATE active_game set players = :players');
-        $query->bindParam('players', json_encode($players));
+        $query = $this->prepare('UPDATE active_game SET players = :players');
+        $playersAfter = json_encode($playersAfter);
+        $query->bindParam('players', $playersAfter);
         $query->execute();
 
         return true;
@@ -381,12 +434,48 @@ class Database extends \SQLite3
         return true;
     }
 
-    public function startGame()
+    /**
+     * @param int $playId
+     * @return bool
+     */
+    public function startGame($playId)
     {
-        $this->prepare('
-            UPDATE active_game SET status = \'started\'
-        ')->execute();
+        $query = $this->prepare('
+            UPDATE active_game
+              SET status = \'started\',
+              play_id = :playId
+        ');
+
+        $query->bindParam('playId', $playId);
+        $query->execute();
 
         return true;
+    }
+
+    /**
+     * @return array
+     */
+    public function getActiveGameInstances()
+    {
+        $game = $this->getActiveGame();
+
+        if (!$game) {
+            return [];
+        }
+
+        $query = $this->prepare('
+            SELECT g.* FROM games g
+              INNER JOIN plays p ON p.id = g.play_id
+              WHERE p.id = :playId
+        ');
+        $query->bindParam('playId', $game['play_id']);
+        $result = $query->execute();
+
+        $data = [];
+        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+            $data[] = $row;
+        }
+
+        return $data;
     }
 }

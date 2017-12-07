@@ -3,6 +3,7 @@
 namespace w\Bot\controllers;
 
 use w\Bot\structures\Action;
+use w\Bot\structures\GameStateResponse;
 use w\Bot\structures\SlackResponse;
 
 class ActionController extends BaseController
@@ -19,11 +20,13 @@ class ActionController extends BaseController
                 'leave' => 'onGameLeave',
                 'start' => 'onGameStart',
                 'cancel' => 'onGameCancel',
+                'refresh' => 'onGameRefresh',
             ],
         ],
+        'update' => [
+            'method' => 'processUpdateActions',
+        ]
     ];
-
-
 
     public function processInteractiveMessage()
     {
@@ -36,7 +39,7 @@ class ActionController extends BaseController
             return Action::fromData($action);
         }, $this->payload['actions']);
 
-        return call_user_func([$this, $this->callbacks[$callbackId]['method']], [$actions]);
+        return call_user_func([$this, $this->callbacks[$callbackId]['method']], $actions);
     }
 
     /**
@@ -45,8 +48,9 @@ class ActionController extends BaseController
      */
     public function processGameActions($actions)
     {
-        $player = $this->payload['user']->id;
-        $action = array_pop($actions);
+        $player = $this->payload['user']['id'];
+        $action = reset($actions);
+        error_log(print_r($actions, true));
 
         $actions = $this->callbacks['game']['actions'];
         if (!isset($actions[$action->getValue()])) {
@@ -58,7 +62,7 @@ class ActionController extends BaseController
 
     /**
      * @param string $player
-     * @return null|\Slack\Message\Message
+     * @return null|GameStateResponse
      */
     protected function onGameJoin($player)
     {
@@ -76,12 +80,12 @@ class ActionController extends BaseController
             return null;
         }
 
-        return $this->footballState->getMessage($this->client->getMessageBuilder());
+        return new GameStateResponse;
     }
 
     /**
      * @param string $player
-     * @return \Slack\Message\Message|SlackResponse
+     * @return string|GameStateResponse|SlackResponse
      */
     protected function onGameLeave($player)
     {
@@ -95,6 +99,99 @@ class ActionController extends BaseController
             return null;
         }
 
-        return $this->footballState->getMessage($this->client->getMessageBuilder());
+        if ($this->footballState->getPlayerCount() == 0) {
+            $this->db->clearActiveGame();
+            return 'Cancelled!';
+        }
+
+        return new GameStateResponse;
+    }
+
+    /**
+     * @param string $player
+     * @return null|string
+     */
+    protected function onGameCancel($player)
+    {
+        if (!$this->footballState->isManager($player)) {
+            return null;
+        }
+
+        $this->footballState->clear();
+
+        return 'Cancelled!';
+    }
+
+    protected function onGameStart($player)
+    {
+        if (!$this->footballState->isManager($player)) {
+            return null;
+        }
+
+        if (!$this->footballState->start($player)) {
+            return null;
+        }
+
+        return new GameStateResponse;
+    }
+
+    protected function onGameRefresh($player)
+    {
+        return new GameStateResponse;
+    }
+
+    /**
+     * @param Action[] $actions
+     * @return null
+     * @throws \Exception
+     */
+    protected function processUpdateActions($actions)
+    {
+        $player = $this->payload['user']['id'];
+        $action = reset($actions);
+
+        if (!$this->footballState->isManager($player)) {
+            return null;
+        }
+
+        $name = $action->getName();
+        error_log(print_r($action, true));
+        $nameSplit = explode('_', $name);
+        if (count($nameSplit) != 2) {
+            return null;
+        }
+
+        $won = $action->getValue();
+
+        // Team names
+        if (!in_array($won, ['A', 'B' , '-'])) {
+            return null;
+        }
+
+        $gameId = $nameSplit[1];
+        $teamAWon = $won == 'A';
+        $didNotPlay = $won == '-';
+
+        if ($didNotPlay) {
+            $this->db->markGameAsDeleted($gameId);
+
+            return new GameStateResponse;
+        }
+
+        if (!$this->db->updateGame($gameId, $teamAWon)) {
+            return null;
+        }
+
+        $gameInstances = $this->db->getActiveGameInstances();
+        $deletedGameInstances = array_filter($gameInstances, function ($instance) {
+            return $instance['status'] == 'deleted';
+        });
+        if (count($gameInstances) == count($deletedGameInstances)) {
+            $this->db->clearActiveGame();
+
+            return 'Finished!';
+        }
+
+        return new GameStateResponse;
     }
 }

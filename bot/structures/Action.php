@@ -28,8 +28,24 @@ class Action extends DataObject
     /**
      * @return string
      */
-    public function getValue() :string
+    public function getValue(): string
     {
         return $this->data['value'];
+    }
+
+    /**
+     * @return string
+     */
+    public function getType(): string
+    {
+        return $this->data['type'];
+    }
+
+    /**
+     * @return string
+     */
+    public function getName(): string
+    {
+        return $this->data['name'];
     }
 }

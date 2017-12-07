@@ -2,14 +2,14 @@
 
 namespace w\Bot;
 
+use Slack\ApiClient;
 use Slack\Message\Message;
 use Slack\Message\MessageBuilder;
-use Slack\RealTimeClient;
 
 abstract class AbstractMessageManager
 {
     /**
-     * @var RealTimeClient
+     * @var ApiClient
      */
     protected $client;
 
@@ -25,7 +25,7 @@ abstract class AbstractMessageManager
 
     protected static $commands;
 
-    public function __construct(FootballState $state, RealTimeClient $client)
+    public function __construct(FootballState $state, ApiClient $client)
     {
         $this->state = $state;
         $this->client = $client;
@@ -33,7 +33,7 @@ abstract class AbstractMessageManager
 
     /**
      * @param Message $message
-     * @return null|MessageBuilder
+     * @return null|MessageBuilder|string
      */
     public function parseMessage(Message $message)
     {
@@ -59,8 +59,7 @@ abstract class AbstractMessageManager
             $responseText = "Incorrect message command given, try !help";
         }
 
-        return $this->client->getMessageBuilder()
-            ->setText($responseText);
+        return $responseText;
     }
 
     private function onHelp(Message $message = null): string

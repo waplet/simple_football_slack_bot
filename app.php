@@ -17,7 +17,7 @@ try {
     $payload = \Slack\Payload::fromJSON($input);
 } catch (UnexpectedValueException $e) {
     if (!isset($_POST['payload'])) {
-        echo $e->getMessage();
+        error_log($e->getMessage());
         return;
     }
 
@@ -33,9 +33,17 @@ try {
     echo $e->getMessage();
     die;
 }
+error_log(print_r($response, true));
 if (!is_null($response)) {
     if ($response instanceof \w\Bot\structures\HTTPResponse) {
         echo $response->message;
+    } else if ($response instanceof \w\Bot\structures\GameStateResponse) {
+        header('Content-type: application/json');
+        $messageBuilder = $footballState->getMessage($client->getMessageBuilder());
+        if (is_null($messageBuilder)) {
+            return;
+        }
+        echo json_encode($footballState->getMessage($client->getMessageBuilder())->create()->jsonSerialize(), JSON_PRETTY_PRINT);
     } else if (is_string($response)) {
         echo $response;
     } else if ($response instanceof \w\Bot\structures\SlackResponse) {

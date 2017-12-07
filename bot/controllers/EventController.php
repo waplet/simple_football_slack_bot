@@ -2,12 +2,8 @@
 
 namespace w\Bot\controllers;
 
-use Slack\Message\Attachment;
 use Slack\Message\Message;
-use Slack\Message\MessageBuilder;
-use w\Bot\structures\Action;
-use w\Bot\structures\ActionAttachment;
-use w\Bot\structures\SlackResponse;
+use w\Bot\MessageManager;
 
 class EventController extends BaseController
 {
@@ -39,21 +35,15 @@ class EventController extends BaseController
 
     public function actionMessage(Message $message)
     {
-        if ($message->data['user'] == getenv('APP_BOT_USER')) {
-            return null;
-        }
         // Skip changes
         if (isset($message->data['subtype']) && $message->data['subtype'] == 'message_changed') {
             return null;
         }
-
-        if ($message->data['text'] == ',begin') {
-            return $this->footballState->getMessage($this->client->getMessageBuilder());
+        if ($message->data['user'] == getenv('APP_BOT_USER')) {
+            return null;
         }
 
-        $response = new SlackResponse();
-        $response->message = $message->getText();
-
-        return $response;
+        $messageManager = new MessageManager($this->footballState, $this->client);
+        return $messageManager->parseMessage($message);
     }
 }
