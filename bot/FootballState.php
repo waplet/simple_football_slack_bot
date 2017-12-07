@@ -243,4 +243,17 @@ class FootballState
 
         return $messageBuilder;
     }
+
+    public function isFinishedGame()
+    {
+        $gameInstances = $this->db->getActiveGameInstances();
+        $deletedGameInstances = array_filter($gameInstances, function ($instance) {
+            return $instance['status'] == 'deleted';
+        });
+        if (count($gameInstances) == count($deletedGameInstances)) {
+            return true;
+        }
+
+        return false;
+    }
 }

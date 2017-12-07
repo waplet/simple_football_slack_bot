@@ -175,6 +175,10 @@ class ActionController extends BaseController
         if ($didNotPlay) {
             $this->db->markGameAsDeleted($gameId);
 
+            if ($this->footballState->isFinishedGame()) {
+                return 'Finished';
+            }
+
             return new GameStateResponse;
         }
 
@@ -182,14 +186,8 @@ class ActionController extends BaseController
             return null;
         }
 
-        $gameInstances = $this->db->getActiveGameInstances();
-        $deletedGameInstances = array_filter($gameInstances, function ($instance) {
-            return $instance['status'] == 'deleted';
-        });
-        if (count($gameInstances) == count($deletedGameInstances)) {
-            $this->db->clearActiveGame();
-
-            return 'Finished!';
+        if ($this->footballState->isFinishedGame()) {
+            return 'Finished';
         }
 
         return new GameStateResponse;
