@@ -5,6 +5,7 @@ namespace w\Bot;
 use Slack\ApiClient;
 use Slack\Message\Message;
 use Slack\Message\MessageBuilder;
+use w\Bot\structures\SlackResponse;
 
 abstract class AbstractMessageManager
 {
@@ -59,6 +60,13 @@ abstract class AbstractMessageManager
             } else {
                 $responseText = "Incorrect message command given, try !help";
             }
+        }
+
+        // If message manager response is string, let's post is as slack message
+        if (is_string($responseText)) {
+            $response = new SlackResponse();
+            $response->message = $responseText;
+            $responseText = $response;
         }
 
         return $responseText;
