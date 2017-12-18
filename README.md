@@ -6,7 +6,7 @@ Populate your tokens and user ids
 
     composer install
     php scripts/create_db.php
-    $ php -S localhost:80 app.php
+    $ php -S localhost:80 index.php
 
 Add bot to Slack bots
 

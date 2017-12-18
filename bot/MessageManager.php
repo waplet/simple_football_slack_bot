@@ -52,7 +52,10 @@ class MessageManager extends AbstractMessageManager
             return $this->state->getMessage($this->client->getMessageBuilder());
         }
 
-        $this->state->join($message->data['user']);
-        return $this->state->getMessage($this->client->getMessageBuilder());
+        if ($this->state->join($message->data['user'])) {
+            return $this->state->getMessage($this->client->getMessageBuilder());
+        }
+
+        return null;
     }
 }

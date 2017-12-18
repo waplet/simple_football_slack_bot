@@ -53,6 +53,11 @@ class EventController extends BaseController
             return null;
         }
 
+        if (isset($message->data['event_time']) && (time() - (int)$message->data['event_time']) > 10) {
+            echo "Skipping event, it is from past!";
+            return null;
+        }
+
         $messageManager = new MessageManager($this->footballState, $this->client);
         return $messageManager->parseMessage($message);
     }

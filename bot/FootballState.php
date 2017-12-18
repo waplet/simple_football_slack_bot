@@ -161,8 +161,14 @@ class FootballState
      */
     protected function getGameState(MessageBuilder $messageBuilder)
     {
+        $status = $this->db->getStatus();
+        if ($status == 'none') {
+            $messageBuilder->setText('Cancelled!');
+            return $messageBuilder;
+        }
+
         $text = "Join to play a game!\n"
-            . "Status: *" . $this->db->getStatus() . "*\n"
+            . "Status: *" . $status . "*\n"
             . "Player joined: " . implode(' ', array_map(function ($userId) {
                 return '<@' . $userId . '>';
             }, $this->getJoinedPlayers()));
@@ -177,14 +183,14 @@ class FootballState
             $action = new Action("game", "Join", "button", "join", "primary");
             $attachment->addAction($action);
         }
-        if ($this->db->getStatus() != 'started') {
+        if ($status != 'started') {
             $action = new Action("game", "Leave", "button", "leave", "danger");
             $attachment->addAction($action);
         }
         $action = new Action("game", "Cancel", "button", "cancel"); // Add confirm
         $attachment->addAction($action);
 
-        if ($this->getPlayerCount() == $this->getPlayersNeeded() && $this->db->getStatus() != 'started') {
+        if ($this->getPlayerCount() == $this->getPlayersNeeded() && $status != 'started') {
             $action = new Action("game", "Start", "button", "start");
             $attachment->addAction($action);
         }
