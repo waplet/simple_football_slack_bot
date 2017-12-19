@@ -183,6 +183,7 @@ class ActionController extends BaseController
             $this->db->markGameAsDeleted($gameId);
 
             if ($this->footballState->isFinishedGame()) {
+                $this->footballState->db->clearActiveGame();
                 return 'Finished';
             }
 
@@ -194,6 +195,7 @@ class ActionController extends BaseController
         }
 
         if ($this->footballState->isFinishedGame()) {
+            $this->footballState->db->clearActiveGame();
             return 'Finished';
         }
 
