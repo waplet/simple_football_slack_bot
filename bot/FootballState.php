@@ -80,7 +80,26 @@ class FootballState
             return false;
         }
 
-        if (in_array($player, $this->getJoinedPlayers())) {
+        if ($this->amI($player)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * @param string $player
+     * @return bool
+     */
+    public function isFirst($player): bool
+    {
+        $players = $this->getJoinedPlayers();
+
+        if (empty($players)) {
+            return false;
+        }
+
+        if ($players[0] == $player) {
             return true;
         }
 
@@ -195,6 +214,8 @@ class FootballState
             $attachment->addAction($action);
         }
         $action = new Action("game", "Refresh", "button", "refresh");
+        $attachment->addAction($action);
+        $action = new Action("game", "Notify", "button", "notify");
         $attachment->addAction($action);
         $messageBuilder->addAttachment($attachment);
 

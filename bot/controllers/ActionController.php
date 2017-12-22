@@ -21,6 +21,7 @@ class ActionController extends BaseController
                 'start' => 'onGameStart',
                 'cancel' => 'onGameCancel',
                 'refresh' => 'onGameRefresh',
+                'notify' => 'onGameNotify',
             ],
         ],
         'update' => [
@@ -89,9 +90,7 @@ class ActionController extends BaseController
     protected function onGameLeave($player)
     {
         if (!$this->footballState->amI($player)) {
-            $response = new SlackResponse();
-            $response->message = 'Try /quit!';
-            return $response;
+            return null;
         }
 
         if (!$this->footballState->leave($player)) {
@@ -145,6 +144,29 @@ class ActionController extends BaseController
     protected function onGameRefresh($player)
     {
         return new GameStateResponse;
+    }
+
+    /**
+     * Writes a slack message triggering notifications for all current players
+     * @param $player
+     * @return null
+     */
+    protected function onGameNotify($player) {
+        if (!$this->footballState->isManager($player)) {
+            return null;
+        }
+
+        if (!$this->footballState->isFirst($player)) {
+            // Only first should notify
+            return null;
+        }
+
+        $response = new SlackResponse();
+        $response->message = "Ready? " . implode(' ', array_map(function ($userId) {
+                return '<@' . $userId . '>';
+            }, $this->footballState->getJoinedPlayers()));
+
+        return $response;
     }
 
     /**
