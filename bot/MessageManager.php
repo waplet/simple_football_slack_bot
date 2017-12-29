@@ -36,7 +36,8 @@ class MessageManager extends AbstractMessageManager
         $result = '';
 
         foreach ($userList as $k => $user) {
-            $result .= ($k + 1) . '. <@' . $user['id'] . '> - Won: *' . $user['games_won'] . '* - Games played: *' . $user['games_played'] . "*\n";
+            $score = $user['games_played'] ? number_format((($user['games_won'] * 100) / $user['games_played']),0) : 0;
+            $result .= ($k + 1) . '. <@' . $user['id'] . '> - Won: *' . $user['games_won'] . '* - Games played: *' . $user['games_played'] . "* - Win rate: *" . $score . "%*\n";
         }
 
         return $result;
