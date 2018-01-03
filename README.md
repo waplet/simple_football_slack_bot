@@ -16,8 +16,11 @@ Invite to channel
 
 # Setup
     Host it
+    
     Subscribe to `channel.message` event
+    
     Enable events path to "{yoursite}/event"
+    
     Same with actions "{yoursite}{route}"
 
 
