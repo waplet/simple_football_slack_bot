@@ -286,4 +286,65 @@ class FootballState
 
         return false;
     }
+
+    /**
+     * @param array $rankByWonGames
+     * @return array
+     */
+    public function getRankByWinRate(array $rankByWonGames = [])
+    {
+        usort($rankByWonGames, function ($userA, $userB) {
+            $scoreA = $userA['games_played'] ? $userA['games_won'] / $userA['games_played'] : 0;
+            $scoreB = $userB['games_played'] ? $userB['games_won'] / $userB['games_played'] : 0;
+
+            if ($scoreA > $scoreB) {
+                return -1;
+            } else if ($scoreA < $scoreB) {
+                return 1;
+            } else {
+                if ($userA['games_won'] > $userB['games_won']) {
+                    return -1;
+                } else if ($userA['games_won'] < $userB['games_won']) {
+                    return 1;
+                }
+            }
+
+            return -1;
+        });
+
+        return $rankByWonGames;
+    }
+
+    /**
+     * @param array $rankByWonGames
+     * @param array $rankByWinRate
+     * @return array
+     */
+    public function mergeRanks(array $rankByWonGames, array $rankByWinRate)
+    {
+        $userIdDictionary = [];
+        foreach ($rankByWinRate as $index => $user) {
+            $userIdDictionary[$user['id']] = [
+                'user' => $user,
+                'rank' => $index,
+            ];
+        }
+
+        foreach ($rankByWonGames as $index => $user) {
+            $userIdDictionary[$user['id']]['rank'] += $index;
+            $userIdDictionary[$user['id']]['rank'] /= 2.0;
+        }
+
+        usort($userIdDictionary, function ($a, $b) {
+            return $a['rank'] > $b['rank'];
+        });
+
+        $rank = [];
+
+        foreach ($userIdDictionary as $userId => $rankData) {
+            $rank[] = $rankData['user'];
+        }
+
+        return $rank;
+    }
 }

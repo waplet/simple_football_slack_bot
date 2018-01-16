@@ -27,15 +27,17 @@ class MessageManager extends AbstractMessageManager
      */
     protected function onTop(Message $message)
     {
-        $userList = $this->state->db->getTopList();
+        $rankByWonGames = $this->state->db->getTopList();
 
-        if (empty($userList)) {
+        if (empty($rankByWonGames)) {
             return 'No players in top!';
         }
 
-        $result = '';
+        $rankByWinRate = $this->state->getRankByWinRate($rankByWonGames); // Arrays are copied instead of referenced
+        $topList = $this->state->mergeRanks($rankByWonGames, $rankByWinRate);
 
-        foreach ($userList as $k => $user) {
+        $result = '';
+        foreach ($topList as $k => $user) {
             $score = $user['games_played'] ? number_format((($user['games_won'] * 100) / $user['games_played']),0) : 0;
             $result .= ($k + 1) . '. <@' . $user['id'] . '> - Won: *' . $user['games_won'] . '* - Games played: *' . $user['games_played'] . "* - Win rate: *" . $score . "%*\n";
         }
