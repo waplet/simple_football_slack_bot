@@ -131,8 +131,8 @@ class MessageManager extends AbstractMessageManager
             $eventStartRaw = (int)$eventData['start'];
             $eventEndRaw = (int)$eventData['end'];
 
-            $eventStart = new \DateTime('@' . $eventStartRaw, $timezoneReal);
-            $eventEnd = new \DateTime('@' . $eventEndRaw, $timezoneReal);
+            $eventStart = (new \DateTime('@' . $eventStartRaw))->setTimezone($timezoneReal);
+            $eventEnd = (new \DateTime('@' . $eventEndRaw))->setTimezone($timezoneReal);
 
             if ($now->getTimestamp() > $eventEnd->getTimestamp()) {
                 // Event ended
