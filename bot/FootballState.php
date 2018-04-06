@@ -309,7 +309,7 @@ class FootballState
                 }
             }
 
-            return -1;
+            return 0;
         });
 
         return $rankByWonGames;

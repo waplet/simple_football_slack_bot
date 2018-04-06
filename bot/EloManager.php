@@ -27,7 +27,7 @@ class EloManager
             $aWon ? $ratingB : $ratingA
         );
 
-        return $ratingA + self::K * ($S - $E);
+        return (int)($ratingA + self::K * ($S - $E));
     }
 
     /**

@@ -107,7 +107,7 @@ class Database extends \SQLite3
     {
         $query = $this->prepare('
             SELECT * FROM users
-            ORDER BY games_won DESC, games_played ASC
+            ORDER BY current_elo DESC, games_won DESC, games_played ASC
         ');
         $result = $query->execute();
 
@@ -457,8 +457,8 @@ class Database extends \SQLite3
         // 1 - 3; 1 - 4, 2 - 3; 2 - 4, 3 - 1; 3 - 2; 4 - 1; 4 - 2;
         $this->updateUserElo($gamePlayers[0]['id'], EloManager::getElo($gamePlayers[0]['current_elo'], $gamePlayers[2]['current_elo'], $teamAWon));
         $this->updateUserElo($gamePlayers[0]['id'], EloManager::getElo($gamePlayers[0]['current_elo'], $gamePlayers[2]['current_elo'], $teamAWon));
-        $this->updateUserElo($gamePlayers[1]['id'], EloManager::getElo($gamePlayers[1]['current_elo'], $gamePlayers[2]['current_elo'], $teamAWon));
-        $this->updateUserElo($gamePlayers[1]['id'], EloManager::getElo($gamePlayers[1]['current_elo'], $gamePlayers[2]['current_elo'], $teamAWon));
+        $this->updateUserElo($gamePlayers[1]['id'], EloManager::getElo($gamePlayers[1]['current_elo'], $gamePlayers[3]['current_elo'], $teamAWon));
+        $this->updateUserElo($gamePlayers[1]['id'], EloManager::getElo($gamePlayers[1]['current_elo'], $gamePlayers[3]['current_elo'], $teamAWon));
         $this->updateUserElo($gamePlayers[2]['id'], EloManager::getElo($gamePlayers[2]['current_elo'], $gamePlayers[0]['current_elo'], !$teamAWon));
         $this->updateUserElo($gamePlayers[2]['id'], EloManager::getElo($gamePlayers[2]['current_elo'], $gamePlayers[0]['current_elo'], !$teamAWon));
         $this->updateUserElo($gamePlayers[3]['id'], EloManager::getElo($gamePlayers[3]['current_elo'], $gamePlayers[1]['current_elo'], !$teamAWon));
