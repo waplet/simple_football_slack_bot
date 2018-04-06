@@ -206,6 +206,7 @@ class ActionController extends BaseController
 
             if ($this->footballState->isFinishedGame()) {
                 $this->footballState->db->clearActiveGame();
+                $this->footballState->db->summarizeElo();
                 return 'Finished';
             }
 
@@ -218,6 +219,7 @@ class ActionController extends BaseController
 
         if ($this->footballState->isFinishedGame()) {
             $this->footballState->db->clearActiveGame();
+            $this->footballState->db->summarizeElo();
             return 'Finished';
         }
 

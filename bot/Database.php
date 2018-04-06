@@ -29,6 +29,25 @@ class Database extends \SQLite3
     }
 
     /**
+     * @param int $userId
+     * @return array|bool
+     */
+    public function getUser($userId)
+    {
+        $query = $this->prepare('SELECT * FROM users WHERE id = :userId');
+        $query->bindParam('userId', $userId);
+
+        $data = $query->execute()->fetchArray(SQLITE3_ASSOC);
+        $query->close();
+
+        if (!empty($data)) {
+            return $data;
+        }
+
+        return false;
+    }
+
+    /**
      * @param string $userId
      * @return bool
      */
@@ -211,6 +230,12 @@ class Database extends \SQLite3
 
         $this->markGameAsDeleted($game['id']);
 
+        /**
+         * Add ELOs
+         */
+        $this->updateTemporaryElo($game, $teamAWon);
+
+
         return true;
     }
 
@@ -392,4 +417,52 @@ class Database extends \SQLite3
 
         return $data;
     }
+
+    /**
+     * Summarizes total ELO of players, which were earned in games
+     */
+    public function summarizeElo()
+    {
+        $this->exec('UPDATE users SET current_elo = current_elo + temp_elo');
+        $this->exec('UPDATE users SET temp_elo = 0'); // Reset temporary elo for all users
+    }
+
+    /**
+     * @param int $userId
+     * @param int $tempElo
+     */
+    private function updateUserElo($userId, $tempElo)
+    {
+       $query = $this->prepare('UPDATE users SET temp_elo = temp_elo + :tempElo WHERE id = :userId');
+
+       $query->bindParam('tempElo', $tempElo);
+       $query->bindParam('userId', $userId);
+       $query->execute();
+    }
+
+    /**
+     * @param array $game data from table games
+     * @param bool $teamAWon
+     */
+    private function updateTemporaryElo($game, $teamAWon)
+    {
+        $gamePlayers = [];
+        for ($i = 1; $i <= 4; $i++) {
+            $gamePlayers[] = $this->getUser($game['player_' . $i]);
+        }
+
+        error_log(print_r($gamePlayers, true));
+
+        // We need to check each player with each 2 they played
+        // 1 - 3; 1 - 4, 2 - 3; 2 - 4, 3 - 1; 3 - 2; 4 - 1; 4 - 2;
+        $this->updateUserElo($gamePlayers[0]['id'], EloManager::getElo($gamePlayers[0]['current_elo'], $gamePlayers[2]['current_elo'], $teamAWon));
+        $this->updateUserElo($gamePlayers[0]['id'], EloManager::getElo($gamePlayers[0]['current_elo'], $gamePlayers[2]['current_elo'], $teamAWon));
+        $this->updateUserElo($gamePlayers[1]['id'], EloManager::getElo($gamePlayers[1]['current_elo'], $gamePlayers[2]['current_elo'], $teamAWon));
+        $this->updateUserElo($gamePlayers[1]['id'], EloManager::getElo($gamePlayers[1]['current_elo'], $gamePlayers[2]['current_elo'], $teamAWon));
+        $this->updateUserElo($gamePlayers[2]['id'], EloManager::getElo($gamePlayers[2]['current_elo'], $gamePlayers[0]['current_elo'], !$teamAWon));
+        $this->updateUserElo($gamePlayers[2]['id'], EloManager::getElo($gamePlayers[2]['current_elo'], $gamePlayers[0]['current_elo'], !$teamAWon));
+        $this->updateUserElo($gamePlayers[3]['id'], EloManager::getElo($gamePlayers[3]['current_elo'], $gamePlayers[1]['current_elo'], !$teamAWon));
+        $this->updateUserElo($gamePlayers[3]['id'], EloManager::getElo($gamePlayers[3]['current_elo'], $gamePlayers[1]['current_elo'], !$teamAWon));
+    }
+
 }
