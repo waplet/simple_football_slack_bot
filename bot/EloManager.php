@@ -8,7 +8,7 @@ class EloManager
      * K-Factor
      * @var int
      */
-    const K = 32;
+    const K = 16; // Default is 32, but as we account for 2 games, we divide by 2
 
     /**
      * @param int $rankingA current ranking of A team
@@ -27,10 +27,11 @@ class EloManager
             $aWon ? $ratingB : $ratingA
         );
 
-        return (int)($ratingA + self::K * ($S - $E));
+        return (int)(($aWon ? $rankingA : $rankingB) + self::K * ($S - $E));
     }
 
     /**
+     * Temp Elo is just a diff from current Elo to new elo
      * @param int $rankingA current ranking of A team
      * @param int $rankingB current ranking of B team
      * @param bool $aWon
@@ -39,8 +40,8 @@ class EloManager
     public static function getTempElo($rankingA, $rankingB, $aWon)
     {
         return $aWon
-            ? $rankingA - self::getElo($rankingA, $rankingB, true)
-            : $rankingB - self::getElo($rankingA, $rankingB, false);
+            ? self::getElo($rankingA, $rankingB, true) - $rankingA
+            : self::getElo($rankingA, $rankingB, false) - $rankingB;
     }
 
     /**
