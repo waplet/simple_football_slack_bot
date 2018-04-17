@@ -454,12 +454,12 @@ class Database extends \SQLite3
         // We need to check each player with each 2 they played
         // 1 - 3; 1 - 4, 2 - 3; 2 - 4, 3 - 1; 3 - 2; 4 - 1; 4 - 2;
         $this->updateUserElo($gamePlayers[0]['id'], EloManager::getTempElo($gamePlayers[0]['current_elo'], $gamePlayers[2]['current_elo'], $teamAWon));
-        $this->updateUserElo($gamePlayers[0]['id'], EloManager::getTempElo($gamePlayers[0]['current_elo'], $gamePlayers[2]['current_elo'], $teamAWon));
-        $this->updateUserElo($gamePlayers[1]['id'], EloManager::getTempElo($gamePlayers[1]['current_elo'], $gamePlayers[3]['current_elo'], $teamAWon));
+        $this->updateUserElo($gamePlayers[0]['id'], EloManager::getTempElo($gamePlayers[0]['current_elo'], $gamePlayers[3]['current_elo'], $teamAWon));
+        $this->updateUserElo($gamePlayers[1]['id'], EloManager::getTempElo($gamePlayers[1]['current_elo'], $gamePlayers[2]['current_elo'], $teamAWon));
         $this->updateUserElo($gamePlayers[1]['id'], EloManager::getTempElo($gamePlayers[1]['current_elo'], $gamePlayers[3]['current_elo'], $teamAWon));
         $this->updateUserElo($gamePlayers[2]['id'], EloManager::getTempElo($gamePlayers[2]['current_elo'], $gamePlayers[0]['current_elo'], !$teamAWon));
-        $this->updateUserElo($gamePlayers[2]['id'], EloManager::getTempElo($gamePlayers[2]['current_elo'], $gamePlayers[0]['current_elo'], !$teamAWon));
-        $this->updateUserElo($gamePlayers[3]['id'], EloManager::getTempElo($gamePlayers[3]['current_elo'], $gamePlayers[1]['current_elo'], !$teamAWon));
+        $this->updateUserElo($gamePlayers[2]['id'], EloManager::getTempElo($gamePlayers[2]['current_elo'], $gamePlayers[1]['current_elo'], !$teamAWon));
+        $this->updateUserElo($gamePlayers[3]['id'], EloManager::getTempElo($gamePlayers[3]['current_elo'], $gamePlayers[0]['current_elo'], !$teamAWon));
         $this->updateUserElo($gamePlayers[3]['id'], EloManager::getTempElo($gamePlayers[3]['current_elo'], $gamePlayers[1]['current_elo'], !$teamAWon));
     }
 
