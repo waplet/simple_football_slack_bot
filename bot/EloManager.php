@@ -16,32 +16,15 @@ class EloManager
      * @param bool $aWon
      * @return int
      */
-    public static function getElo($rankingA, $rankingB, $aWon)
+    public static function getTempElo($rankingA, $rankingB, $aWon)
     {
         $ratingA = self::getTransformedRating($rankingA);
         $ratingB = self::getTransformedRating($rankingB);
 
         $S = self::getActualScore($aWon);
-        $E = self::getExpectedRating(
-            $aWon ? $ratingA : $ratingB,
-            $aWon ? $ratingB : $ratingA
-        );
+        $E = self::getExpectedRating($ratingA, $ratingB);
 
-        return (int)(($aWon ? $rankingA : $rankingB) + self::K * ($S - $E));
-    }
-
-    /**
-     * Temp Elo is just a diff from current Elo to new elo
-     * @param int $rankingA current ranking of A team
-     * @param int $rankingB current ranking of B team
-     * @param bool $aWon
-     * @return int
-     */
-    public static function getTempElo($rankingA, $rankingB, $aWon)
-    {
-        return $aWon
-            ? self::getElo($rankingA, $rankingB, true) - $rankingA
-            : self::getElo($rankingA, $rankingB, false) - $rankingB;
+        return (int)(self::K * ($S - $E));
     }
 
     /**
@@ -50,7 +33,7 @@ class EloManager
      */
     private static function getTransformedRating($currentRating)
     {
-        return (int)10 ^ ($currentRating / 400.0);
+        return (int)pow(10, ($currentRating / 400.0));
     }
 
     /**
