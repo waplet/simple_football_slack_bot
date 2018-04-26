@@ -209,6 +209,17 @@ class Database extends \SQLite3
         return true;
     }
 
+    public function markGameAsWon($gameId, $teamAWon)
+    {
+        $query = $this->prepare('UPDATE games SET who_won = :whoWon WHERE id = :gameId');
+        $query->bindParam('gameId', $gameId);
+        $query->bindValue('whoWon', $teamAWon ? 1 : 2);
+
+        $query->execute();
+
+        return true;
+    }
+
     /**
      * @param $gameId
      * @param bool $teamAWon
@@ -228,6 +239,7 @@ class Database extends \SQLite3
         $this->incrementUserGames($game['player_3'], 1, $teamAWon ? 0 : 1);
         $this->incrementUserGames($game['player_4'], 1, $teamAWon ? 0 : 1);
 
+        $this->markGameAsWon($game['id'], $teamAWon);
         $this->markGameAsDeleted($game['id']);
 
         /**
