@@ -63,8 +63,8 @@ abstract class BaseController
     public function process()
     {
         // Log request
-        file_put_contents(__DIR__ . '/events.txt',
-            static::class . "\n" . json_encode($this->payload->getData(), JSON_PRETTY_PRINT) . "\n", FILE_APPEND);
+        // file_put_contents(__DIR__ . '/events.txt',
+        //     static::class . "\n" . json_encode($this->payload->getData(), JSON_PRETTY_PRINT) . "\n", FILE_APPEND);
 
         if (!isset($this->types[$this->payload['type']])) {
             throw new \InvalidArgumentException('Invalid payload type received!');
