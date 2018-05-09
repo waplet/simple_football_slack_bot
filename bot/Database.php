@@ -212,7 +212,7 @@ class Database extends \SQLite3
     public function markGameAsWon($gameId, $teamAWon)
     {
         $query = $this->prepare('UPDATE games SET who_won = :whoWon WHERE id = :gameId');
-        $query->bindParam('gameId', $gameId);
+        $query->bindValue('gameId', $gameId);
         $query->bindValue('whoWon', $teamAWon ? 1 : 2);
 
         $query->execute();
