@@ -8,7 +8,7 @@ class EloManager
      * K-Factor
      * @var int
      */
-    const K = 16; // Default is 32, but as we account for 2 games, we divide by 2
+    const K = 32;
 
     /**
      * @param int $rankingA current ranking of A team
