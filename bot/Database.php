@@ -75,7 +75,7 @@ class Database extends \SQLite3
      */
     public function createUser($userId, $name = null)
     {
-        $query = $this->prepare('INSERT INTO users(id, games_played, games_won, name) VALUES (:userId, 0, 0)');
+        $query = $this->prepare('INSERT INTO users(id, games_played, games_won, name) VALUES (:userId, 0, 0, :name)');
         $query->bindParam('userId', $userId);
         $query->bindParam('name', $name);
 
