@@ -1,3 +1,3 @@
 #!/bin/bash
 
-ssh -R 80:localhost:5147 serveo.net -o ConnectTimeout=1200
+ssh -R w.serveo.net:80:localhost:5147 serveo.net -o ConnectTimeout=1200

@@ -2,6 +2,8 @@
 
 namespace w\Bot;
 
+use w\Bot\structures\UserStructure;
+
 class Database extends \SQLite3
 {
     function __construct()
@@ -29,7 +31,26 @@ class Database extends \SQLite3
     }
 
     /**
-     * @param int $userId
+     * @param string $userId
+     * @return bool
+     */
+    public function hasName($userId)
+    {
+        $query = $this->prepare('SELECT name FROM users WHERE id = :userId');
+        $query->bindParam('userId', $userId);
+
+        $data = $query->execute()->fetchArray(SQLITE3_ASSOC);
+        $query->close();
+
+        if (!empty($data['name'])) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * @param string $userId
      * @return array|bool
      */
     public function getUser($userId)
@@ -49,12 +70,34 @@ class Database extends \SQLite3
 
     /**
      * @param string $userId
+     * @param string|null $name
      * @return bool
      */
-    public function createUser($userId)
+    public function createUser($userId, $name = null)
     {
-        $query = $this->prepare('INSERT INTO users(id, games_played, games_won) VALUES (:userId, 0, 0)');
+        $query = $this->prepare('INSERT INTO users(id, games_played, games_won, name) VALUES (:userId, 0, 0)');
         $query->bindParam('userId', $userId);
+        $query->bindParam('name', $name);
+
+        $result = $query->execute();
+
+        if ($result) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * @param string $userId
+     * @param string|null $name
+     * @return bool
+     */
+    public function updateName($userId, $name = null)
+    {
+        $query = $this->prepare('UPDATE users SET name = :name WHERE id = :userId');
+        $query->bindParam('userId', $userId);
+        $query->bindParam('name', $name);
 
         $result = $query->execute();
 
@@ -435,6 +478,7 @@ class Database extends \SQLite3
      */
     public function summarizeElo()
     {
+        $this->exec('UPDATE users SET previous_elo = current_elo');
         $this->exec('UPDATE users SET current_elo = current_elo + temp_elo');
         $this->exec('UPDATE users SET temp_elo = 0'); // Reset temporary elo for all users
     }

@@ -3,6 +3,7 @@
 namespace w\Bot;
 
 use Slack\Message\Message;
+use Slack\User;
 
 class MessageManager extends AbstractMessageManager
 {
@@ -11,6 +12,8 @@ class MessageManager extends AbstractMessageManager
         'top' => 'onTop',
         'begin' => 'onBegin',
         'status' => 'onRoomStatus',
+        'url' => 'onUrl',
+        'name' => 'onUpdateName',
     ];
 
     /**
@@ -37,8 +40,12 @@ class MessageManager extends AbstractMessageManager
         $result = '';
         foreach ($topList as $k => $user) {
             $score = $user['games_played'] ? number_format((($user['games_won'] * 100) / $user['games_played']),0) : 0;
-            $result .= ($k + 1) . '. <@' . $user['id'] . '> - Won: *'
-                . $user['games_won'] . '* - Games played: *'
+            if (!empty($user['name'])) {
+                $result .= ($k + 1) . '. *' . $user['name'] . '*';
+            } else {
+                $result .= ($k + 1) . '. <@' . $user['id'] . '>';
+            }
+            $result .= ' - Won: *' . $user['games_won'] . '* - Games played: *'
                 . $user['games_played'] . "* - Win rate: *" . $score . "%* - ELO: *"
                 . $user['current_elo'] . "* \n";
         }
@@ -56,11 +63,21 @@ class MessageManager extends AbstractMessageManager
             return $this->state->getMessage($this->client->getMessageBuilder());
         }
 
-        if ($this->state->join($message->data['user'])) {
-            return $this->state->getMessage($this->client->getMessageBuilder());
+        if (!$this->state->join($message->data['user'])) {
+            return null;
         }
 
-        return null;
+        $message->getUser()->then(function (User $user) {
+            $db = $this->state->db;
+            if (!$db->hasUser($user->getId())) {
+                $db->createUser($user->getId(), $user->getRealName() ?? $user->getUsername());
+            } else if (!$db->hasName($user->getId())) {
+                $db->updateName($user->getId(), $user->getRealName() ?? $user->getUsername());
+            }
+        });
+
+
+        return $this->state->getMessage($this->client->getMessageBuilder());
     }
 
     /**
@@ -158,5 +175,23 @@ class MessageManager extends AbstractMessageManager
         }
 
         return "Pasākumi:\n" . implode("\n", $eventsPrinted);
+    }
+
+    protected function onUrl(Message $message)
+    {
+        return 'https://github.com/waplet/simple_football_slack_bot/';
+    }
+
+    protected function onUpdateName(Message $message)
+    {
+        $message->getUser()->then(function (User $user) {
+            if (!$this->state->db->hasUser($user->getId())) {
+                return;
+            }
+
+            $this->state->db->updateName($user->getId(), $user->getRealName() ?? $user->getUsername());
+        });
+
+        return null;
     }
 }

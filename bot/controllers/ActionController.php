@@ -2,6 +2,7 @@
 
 namespace w\Bot\controllers;
 
+use Slack\User;
 use w\Bot\structures\Action;
 use w\Bot\structures\GameStateResponse;
 use w\Bot\structures\SlackResponse;
@@ -79,6 +80,15 @@ class ActionController extends BaseController
             // You have already joined!
             return null;
         }
+
+        $this->client->getUserById($player)->then(function (User $user) {
+            $db = $this->db;
+            if (!$db->hasUser($user->getId())) {
+                $db->createUser($user->getId(), $user->getRealName() ?? $user->getUsername());
+            } else if (!$db->hasName($user->getId())) {
+                $db->updateName($user->getId(), $user->getRealName() ?? $user->getUsername());
+            }
+        });
 
         return new GameStateResponse;
     }

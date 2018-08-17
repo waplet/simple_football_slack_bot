@@ -79,7 +79,7 @@ abstract class AbstractMessageManager
     private function onHelp(Message $message = null): string
     {
         return implode(', ', array_map(function ($command) {
-            return '!' . $command;
+            return ',' . $command;
         }, array_keys(static::$commands)));
     }
 
