@@ -6,6 +6,8 @@ use w\Bot\structures\UserStructure;
 
 class Database extends \SQLite3
 {
+    const DF = 'Y-m-d H:i:s';
+
     function __construct()
     {
         parent::__construct(ROOT . '/data/football.db');
@@ -127,12 +129,14 @@ class Database extends \SQLite3
   UPDATE users
   SET 
     games_played = games_played + :gamesPlayed,
-    games_won = games_won + :gamesWon 
+    games_won = games_won + :gamesWon, 
+    last_played = :lastPlayed
   WHERE id = :userId;'
         );
         $query->bindParam('userId', $userId);
         $query->bindParam('gamesPlayed', $gamesPlayed);
         $query->bindParam('gamesWon', $gamesWon);
+        $query->bindParam('lastPlayed', gmdate(self::DF));
 
         $result = $query->execute();
 
@@ -150,6 +154,7 @@ class Database extends \SQLite3
     {
         $query = $this->prepare('
             SELECT * FROM users
+            WHERE last_played BETWEEN DATE("now", "-1 month") AND CURRENT_TIMESTAMP
             ORDER BY current_elo DESC, games_won DESC, games_played ASC
         ');
         $result = $query->execute();
