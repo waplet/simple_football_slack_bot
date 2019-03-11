@@ -10,7 +10,7 @@ $db = $footballState->db;
 //
 $db->exec(<<<SQL
 ALTER TABLE users
-  ADD last_played DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP;
+  ADD last_played DATETIME NULL;
 SQL
 );
 
