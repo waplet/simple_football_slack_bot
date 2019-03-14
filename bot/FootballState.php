@@ -9,7 +9,7 @@ use w\Bot\structures\ActionAttachment;
 
 class FootballState
 {
-    private $playersNeeded = 4;
+    protected $playersNeeded;
 
     /**
      * @var null|\SQLite3
@@ -18,10 +18,16 @@ class FootballState
 
     /**
      * FootballState constructor.
+     * @param int $playersNeeded
      */
-    public function __construct()
+    public function __construct($playersNeeded = null)
     {
         $this->db = new Database();
+        if ($playersNeeded == 2 || $playersNeeded == 4) {
+            $this->playersNeeded = $playersNeeded;
+        } else {
+            $this->playersNeeded = 4;
+        }
         return $this;
     }
 
@@ -186,11 +192,16 @@ class FootballState
             return $messageBuilder;
         }
 
-        $text = "Join to play a game!\n"
-            . "Status: *" . $status . "*\n"
-            . "Player joined: " . implode(' ', array_map(function ($userId) {
+        $text = sprintf("Join to play a game!\n"
+            . "Status: *%s*\n"
+            . "Players joined (%d/%d): %s",
+            $status,
+            count($this->getJoinedPlayers()),
+            $this->getPlayersNeeded(),
+            implode(' ', array_map(function ($userId) {
                 return '<@' . $userId . '>';
-            }, $this->getJoinedPlayers()));
+            }, $this->getJoinedPlayers()))
+        );
 
         $messageBuilder->setText($text);
 
@@ -240,16 +251,29 @@ class FootballState
             if ($instance['status'] == 'deleted') {
                 $attachment = new Attachment('Game #' . ($k + 1), 'Done!');
             } else {
-                $attachment = new ActionAttachment(
-                    'Game #' . ($k + 1),
-                    sprintf("Team A: <@%s> <@%s>\nTeam B: <@%s> <@%s>",
-                        $instance['player_1'],
-                        $instance['player_2'],
-                        $instance['player_3'],
-                        $instance['player_4']),
-                    'You are unable to join',
-                    '#3AA3E3'
-                );
+                if (is_null($instance['player_3']) && is_null($instance['player_4'])) {
+                    $attachment = new ActionAttachment(
+                        'Game #' . ($k + 1),
+                        sprintf("Team A: <@%s>\nTeam B: <@%s>",
+                            $instance['player_1'],
+                            $instance['player_2']
+                        ),
+                        'You are unable to join',
+                        '#3AA3E3'
+                    );
+                } else {
+                    $attachment = new ActionAttachment(
+                        'Game #' . ($k + 1),
+                        sprintf("Team A: <@%s> <@%s>\nTeam B: <@%s> <@%s>",
+                            $instance['player_1'],
+                            $instance['player_2'],
+                            $instance['player_3'],
+                            $instance['player_4']),
+                        'You are unable to join',
+                        '#3AA3E3'
+                    );
+                }
+
                 $attachment->setCallbackId('update');
                 $action = new Action('update_' . $instance['id'], 'A', 'button', 'A', 'primary');
                 $attachment->addAction($action);

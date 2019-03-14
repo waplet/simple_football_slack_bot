@@ -4,7 +4,7 @@ use React\EventLoop\Factory;
 use w\Bot\FootballState;
 
 include_once __DIR__ . '/init.php';
-$footballState = new FootballState();
+$footballState = new FootballState(getenv('APP_BOT_PLAYERS_NEEDED'));
 $loop = Factory::create();
 
 $client = new Slack\ApiClient($loop);

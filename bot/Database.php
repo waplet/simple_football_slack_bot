@@ -183,15 +183,21 @@ class Database extends \SQLite3
      */
     public function createGameInstances($owner, array $players)
     {
-        if (count($players) != 4) {
+        $countPlayers = count($players);
+
+        if (!in_array($countPlayers, [2, 4])) {
             return -1;
         }
 
         $playId = $this->createPlay($owner);
 
-        $this->createGameInstance($playId, $players[0], $players[1], $players[2], $players[3]); // AB CD
-        $this->createGameInstance($playId, $players[0], $players[2], $players[1], $players[3]); // AC BD
-        $this->createGameInstance($playId, $players[0], $players[3], $players[1], $players[2]); // AD BC
+        if ($countPlayers == 4) {
+            $this->createGameInstance($playId, $players[0], $players[1], $players[2], $players[3]); // AB CD
+            $this->createGameInstance($playId, $players[0], $players[2], $players[1], $players[3]); // AC BD
+            $this->createGameInstance($playId, $players[0], $players[3], $players[1], $players[2]); // AD BC
+        } elseif ($countPlayers == 2) {
+            $this->createGameInstance($playId, $players[0], $players[1]); // A B
+        }
 
         return $playId;
     }
@@ -216,7 +222,7 @@ class Database extends \SQLite3
      * @param string $player3
      * @param string $player4
      */
-    private function createGameInstance($playId, $player1, $player2, $player3, $player4)
+    private function createGameInstance($playId, $player1, $player2, $player3 = null, $player4 = null)
     {
         $query = $this->prepare('
             INSERT INTO games(play_id, player_1, player_2, player_3, player_4)
@@ -267,12 +273,13 @@ class Database extends \SQLite3
     }
 
     /**
-     * @param $gameId
+     * @param int $gameId
+     * @param int $playersNeeded
      * @param bool $teamAWon
      * @return bool
      * @throws \Exception
      */
-    public function updateGame($gameId, $teamAWon = true)
+    public function updateGame($gameId, $playersNeeded, $teamAWon = true)
     {
         $game = $this->getGame($gameId);
 
@@ -280,10 +287,17 @@ class Database extends \SQLite3
             return false;
         }
 
-        $this->incrementUserGames($game['player_1'], 1, $teamAWon ? 1 : 0);
-        $this->incrementUserGames($game['player_2'], 1, $teamAWon ? 1 : 0);
-        $this->incrementUserGames($game['player_3'], 1, $teamAWon ? 0 : 1);
-        $this->incrementUserGames($game['player_4'], 1, $teamAWon ? 0 : 1);
+        if ($playersNeeded == 2) {
+            // 1 v 1
+            $this->incrementUserGames($game['player_1'], 1, $teamAWon ? 1 : 0);
+            $this->incrementUserGames($game['player_2'], 1, $teamAWon ? 0 : 1);
+        } else {
+            // 2 v 2
+            $this->incrementUserGames($game['player_1'], 1, $teamAWon ? 1 : 0);
+            $this->incrementUserGames($game['player_2'], 1, $teamAWon ? 1 : 0);
+            $this->incrementUserGames($game['player_3'], 1, $teamAWon ? 0 : 1);
+            $this->incrementUserGames($game['player_4'], 1, $teamAWon ? 0 : 1);
+        }
 
         $this->markGameAsWon($game['id'], $teamAWon);
         $this->markGameAsDeleted($game['id']);
@@ -291,7 +305,7 @@ class Database extends \SQLite3
         /**
          * Add ELOs
          */
-        $this->updateTemporaryElo($game, $teamAWon);
+        $this->updateTemporaryElo($game, $playersNeeded, $teamAWon);
 
 
         return true;
@@ -501,49 +515,68 @@ class Database extends \SQLite3
 
     /**
      * @param array $game data from table games
+     * @param int $playersNeeded
      * @param bool $teamAWon
      */
-    private function updateTemporaryElo($game, $teamAWon)
+    private function updateTemporaryElo($game, $playersNeeded, $teamAWon)
     {
         $gamePlayers = [];
-        for ($i = 1; $i <= 4; $i++) {
+        for ($i = 1; $i <= $playersNeeded; $i++) {
             $gamePlayers[] = $this->getUser($game['player_' . $i]);
         }
 
-        // We need to check each player with each 2 they played
-        // 1 - 3; 1 - 4, 2 - 3; 2 - 4, 3 - 1; 3 - 2; 4 - 1; 4 - 2;
-        $this->updateUserElo(
-            $gamePlayers[0]['id'],
-            EloManager::getTempElo(
-                ($gamePlayers[0]['current_elo'] + $gamePlayers[1]['current_elo']) / 2,
-                ($gamePlayers[2]['current_elo'] + $gamePlayers[3]['current_elo']) / 2,
-                $teamAWon
-            )
-        );
-        $this->updateUserElo(
-            $gamePlayers[1]['id'],
-            EloManager::getTempElo(
-                ($gamePlayers[0]['current_elo'] + $gamePlayers[1]['current_elo']) / 2,
-                ($gamePlayers[2]['current_elo'] + $gamePlayers[3]['current_elo']) / 2,
-                $teamAWon
-            )
-        );
-        $this->updateUserElo(
-            $gamePlayers[2]['id'],
-            EloManager::getTempElo(
-                ($gamePlayers[2]['current_elo'] + $gamePlayers[3]['current_elo']) / 2,
-                ($gamePlayers[0]['current_elo'] + $gamePlayers[1]['current_elo']) / 2,
-                !$teamAWon
-            )
-        );
-        $this->updateUserElo(
-            $gamePlayers[3]['id'],
-            EloManager::getTempElo(
-                ($gamePlayers[2]['current_elo'] + $gamePlayers[3]['current_elo']) / 2,
-                ($gamePlayers[0]['current_elo'] + $gamePlayers[1]['current_elo']) / 2,
-                !$teamAWon
-            )
-        );
+        if ($playersNeeded == 2) {
+            $this->updateUserElo(
+                $gamePlayers[0]['id'],
+                EloManager::getTempElo(
+                    $gamePlayers[0]['current_elo'],
+                    $gamePlayers[1]['current_elo'],
+                    $teamAWon
+                )
+            );
+
+            $this->updateUserElo(
+                $gamePlayers[1]['id'],
+                EloManager::getTempElo(
+                    $gamePlayers[1]['current_elo'],
+                    $gamePlayers[0]['current_elo'],
+                    !$teamAWon
+                )
+            );
+        } else {
+            $this->updateUserElo(
+                $gamePlayers[0]['id'],
+                EloManager::getTempElo(
+                    ($gamePlayers[0]['current_elo'] + $gamePlayers[1]['current_elo']) / 2,
+                    ($gamePlayers[2]['current_elo'] + $gamePlayers[3]['current_elo']) / 2,
+                    $teamAWon
+                )
+            );
+            $this->updateUserElo(
+                $gamePlayers[1]['id'],
+                EloManager::getTempElo(
+                    ($gamePlayers[0]['current_elo'] + $gamePlayers[1]['current_elo']) / 2,
+                    ($gamePlayers[2]['current_elo'] + $gamePlayers[3]['current_elo']) / 2,
+                    $teamAWon
+                )
+            );
+            $this->updateUserElo(
+                $gamePlayers[2]['id'],
+                EloManager::getTempElo(
+                    ($gamePlayers[2]['current_elo'] + $gamePlayers[3]['current_elo']) / 2,
+                    ($gamePlayers[0]['current_elo'] + $gamePlayers[1]['current_elo']) / 2,
+                    !$teamAWon
+                )
+            );
+            $this->updateUserElo(
+                $gamePlayers[3]['id'],
+                EloManager::getTempElo(
+                    ($gamePlayers[2]['current_elo'] + $gamePlayers[3]['current_elo']) / 2,
+                    ($gamePlayers[0]['current_elo'] + $gamePlayers[1]['current_elo']) / 2,
+                    !$teamAWon
+                )
+            );
+        }
     }
 
 }

@@ -223,7 +223,7 @@ class ActionController extends BaseController
             return new GameStateResponse;
         }
 
-        if (!$this->db->updateGame($gameId, $teamAWon)) {
+        if (!$this->db->updateGame($gameId, $this->footballState->getPlayersNeeded(), $teamAWon)) {
             return null;
         }
 
