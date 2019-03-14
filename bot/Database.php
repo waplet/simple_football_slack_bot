@@ -2,8 +2,6 @@
 
 namespace w\Bot;
 
-use w\Bot\structures\UserStructure;
-
 class Database extends \SQLite3
 {
     const DF = 'Y-m-d H:i:s';
@@ -136,7 +134,7 @@ class Database extends \SQLite3
         $query->bindParam('userId', $userId);
         $query->bindParam('gamesPlayed', $gamesPlayed);
         $query->bindParam('gamesWon', $gamesWon);
-        $query->bindParam('lastPlayed', gmdate(self::DF));
+        $query->bindValue('lastPlayed', gmdate(self::DF));
 
         $result = $query->execute();
 
