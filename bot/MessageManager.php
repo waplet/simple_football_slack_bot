@@ -119,7 +119,8 @@ class MessageManager extends AbstractMessageManager
         // error_log($oneWorkUrl . "?" . $query);
 
         if ($status !== 200) {
-            error_log("Status 200");
+            error_log($response);
+            error_log("Status != 200");
             return null;
         }
 
