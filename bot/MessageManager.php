@@ -164,10 +164,10 @@ class MessageManager extends AbstractMessageManager
 
             if ($eventStart->getTimestamp() > $now->getTimestamp()) {
                 $diff = $eventStart->diff($now);
-                $eventsPrinted[] = sprintf("*%s* sāksies *%s* (%d)", $eventData["body"] ?? $eventData['title'], $eventStart->format('H:i'), $diff->h * 60 + $diff->i);
+                $eventsPrinted[] = sprintf("*%s* sāksies *%s* (%d)", $eventData["body"] ?: $eventData['title'], $eventStart->format('H:i'), $diff->h * 60 + $diff->i);
             } else if ($eventEnd->getTimestamp() > $now->getTimestamp()) {
                 $diff = $now->diff($eventEnd);
-                $eventsPrinted[] = sprintf("*%s* beigsies *%s* (%d)", $eventData["body"] ?? $eventData['title'], $eventEnd->format('H:i'), $diff->h * 60 + $diff->i);
+                $eventsPrinted[] = sprintf("*%s* beigsies *%s* (%d)", $eventData["body"] ?: $eventData['title'], $eventEnd->format('H:i'), $diff->h * 60 + $diff->i);
             }
         }
 
