@@ -5,7 +5,8 @@
     "coderstephen/slack-client": "^0.3.0",
     "vlucas/phpdotenv": "^2.4",
     "ext-sqlite3": "*",
-    "ext-json": "*"
+    "ext-json": "*",
+    "ext-mbstring": "*"
   },
   "autoload": {
     "psr-4": {

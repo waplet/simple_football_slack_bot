@@ -144,7 +144,7 @@ class MessageManager extends AbstractMessageManager
 
         $eventsPrinted = [];
 
-        $events = array_reverse($events);
+        usort($events, 'eventSort');
         foreach ($events as $eventData) {
             $eventStartRaw = (int)$eventData['start'];
             $eventEndRaw = (int)$eventData['end'];
@@ -176,6 +176,11 @@ class MessageManager extends AbstractMessageManager
         }
 
         return "Pasākumi:\n" . implode("\n", $eventsPrinted);
+    }
+
+    private function eventSort(array $eventA, array $eventB)
+    {
+        return (int)$eventA['start'] <=> (int)$eventB['start'];
     }
 
     protected function onUrl(Message $message)
