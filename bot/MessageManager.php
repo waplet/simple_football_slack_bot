@@ -144,7 +144,7 @@ class MessageManager extends AbstractMessageManager
 
         $eventsPrinted = [];
 
-        usort($events, 'eventSort');
+        usort($events, [$this, 'eventSort']);
         foreach ($events as $eventData) {
             $eventStartRaw = (int)$eventData['start'];
             $eventEndRaw = (int)$eventData['end'];
