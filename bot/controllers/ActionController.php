@@ -228,9 +228,17 @@ class ActionController extends BaseController
         }
 
         if ($this->footballState->isFinishedGame()) {
-            $this->footballState->db->clearActiveGame();
-            $this->footballState->db->summarizeElo();
-            return 'Finished';
+			$deltas = $this->footballState->db->getEloDeltas();
+			$response = "Finished";
+			if ($deltas) {
+				foreach ($deltas as $delta) {
+					$response .= "\n<@".$delta['id'].'> ('. $delta['current_elo'].') '.($delta['temp_elo']<0?'':'+').$delta['temp_elo'];
+				}
+			}
+
+			$this->footballState->db->clearActiveGame();
+			$this->footballState->db->summarizeElo();
+			return $response;
         }
 
         return new GameStateResponse;
