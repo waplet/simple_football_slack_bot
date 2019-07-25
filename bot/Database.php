@@ -579,4 +579,17 @@ class Database extends \SQLite3
         }
     }
 
+	public function getEloDeltas()
+	{
+		$query = $this->prepare('SELECT `id`, `name`, `temp_elo`, `current_elo` FROM users WHERE `temp_elo`');
+		$result = $query->execute();
+		$data = [];
+
+		while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+			$data[] = $row;
+		}
+		$query->close();
+
+		return $data;
+	}
 }
