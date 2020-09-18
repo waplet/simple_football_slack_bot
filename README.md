@@ -21,7 +21,7 @@ Invite to channel
     
     Enable events path to "{yoursite}/event"
     
-    Same with actions "{yoursite}{route}"
+    Same with actions "{yoursite}/action"
 
 
 # Requirements
