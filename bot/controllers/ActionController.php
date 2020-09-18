@@ -2,8 +2,6 @@
 
 namespace w\Bot\controllers;
 
-use Slack\User;
-use w\Bot\structures\Action;
 use w\Bot\structures\GameStateResponse;
 use w\Bot\structures\SlackResponse;
 
@@ -37,15 +35,13 @@ class ActionController extends BaseController
             throw new \InvalidArgumentException('Invalid payload callback received!');
         }
 
-        $actions = array_map(function (array $action) {
-            return Action::fromData($action);
-        }, $this->payload['actions']);
+        $actions = $this->payload['actions'];
 
         return call_user_func([$this, $this->callbacks[$callbackId]['method']], $actions);
     }
 
     /**
-     * @param Action[] $actions
+     * @param array[] $actions
      * @return string
      */
     public function processGameActions($actions)
@@ -54,11 +50,11 @@ class ActionController extends BaseController
         $action = reset($actions);
 
         $actions = $this->callbacks['game']['actions'];
-        if (!isset($actions[$action->getValue()])) {
+        if (!isset($actions[$action['value']])) {
             throw new \InvalidArgumentException('Invalid game action received!');
         }
 
-        return call_user_func([$this, $actions[$action->getValue()]], $player);
+        return call_user_func([$this, $actions[$action['value']]], $player);
     }
 
     /**
@@ -81,14 +77,15 @@ class ActionController extends BaseController
             return null;
         }
 
-        $this->client->getUserById($player)->then(function (User $user) {
-            $db = $this->db;
-            if (!$db->hasUser($user->getId())) {
-                $db->createUser($user->getId(), $user->getRealName() ?? $user->getUsername());
-            } else if (!$db->hasName($user->getId())) {
-                $db->updateName($user->getId(), $user->getRealName() ?? $user->getUsername());
+        $usersInfo = $this->client->usersInfo(['user' => $player]);
+        $user = $usersInfo ? $usersInfo->getUser() : null;
+        if ($user) {
+            if (!$this->db->hasUser($user->getId())) {
+                $this->db->createUser($user->getId(), $user->getRealName() ?? $user->getName());
+            } elseif (!$this->db->hasName($user->getId())) {
+                $this->db->updateName($user->getId(), $user->getRealName() ?? $user->getName());
             }
-        });
+        }
 
         return new GameStateResponse;
     }
@@ -180,7 +177,7 @@ class ActionController extends BaseController
     }
 
     /**
-     * @param Action[] $actions
+     * @param array[] $actions
      * @return null
      * @throws \Exception
      */
@@ -193,14 +190,14 @@ class ActionController extends BaseController
             return null;
         }
 
-        $name = $action->getName();
+        $name = $action['name'];
         error_log(print_r($action, true));
         $nameSplit = explode('_', $name);
-        if (count($nameSplit) != 2) {
+        if (count($nameSplit) !== 2) {
             return null;
         }
 
-        $won = $action->getValue();
+        $won = $action['value'];
 
         // Team names
         if (!in_array($won, ['A', 'B', '-'])) {
@@ -208,8 +205,8 @@ class ActionController extends BaseController
         }
 
         $gameId = $nameSplit[1];
-        $teamAWon = $won == 'A';
-        $didNotPlay = $won == '-';
+        $teamAWon = $won === 'A';
+        $didNotPlay = $won === '-';
 
         if ($didNotPlay) {
             $this->db->markGameAsDeleted($gameId);

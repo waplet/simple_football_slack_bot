@@ -4,8 +4,6 @@ namespace w\Bot;
 
 use Slack\Message\Attachment;
 use Slack\Message\MessageBuilder;
-use w\Bot\structures\Action;
-use w\Bot\structures\ActionAttachment;
 
 class FootballState
 {
@@ -28,7 +26,6 @@ class FootballState
         } else {
             $this->playersNeeded = 4;
         }
-        return $this;
     }
 
 
@@ -159,16 +156,15 @@ class FootballState
     }
 
     /**
-     * @param MessageBuilder $messageBuilder
-     * @return MessageBuilder
+     * @return array|null
      */
-    public function getMessage(MessageBuilder $messageBuilder)
+    public function getMessage()
     {
         if ($this->db->getStatus() == 'started') {
-            return $this->getPostGameState($messageBuilder);
+            return $this->getPostGameState();
         }
 
-        return $this->getGameState($messageBuilder);
+        return $this->getGameState();
     }
 
     /**
@@ -181,15 +177,19 @@ class FootballState
     }
 
     /**
-     * @param MessageBuilder $messageBuilder
-     * @return MessageBuilder
+     * @return array|null
      */
-    protected function getGameState(MessageBuilder $messageBuilder)
+    protected function getGameState()
     {
+        $response = [
+            'mrkdwn' => true,
+        ];
+
         $status = $this->db->getStatus();
-        if ($status == 'none') {
-            $messageBuilder->setText('Cancelled!');
-            return $messageBuilder;
+        if ($status === 'none') {
+            $response['text'] = 'Cancelled!';
+
+            return $response;
         }
 
         $text = sprintf("Join to play a game!\n"
@@ -203,41 +203,82 @@ class FootballState
             }, $this->getJoinedPlayers()))
         );
 
-        $messageBuilder->setText($text);
+        $response['text'] = $text;
+        $response['attachments'] = [];
 
-        $attachment = new ActionAttachment('Do you want to play a game?', 'Choose one of actions',
-            'You are unable to join', '#3AA3E3');
-        $attachment->setCallbackId('game');
+        $attachment = [
+            'title' => 'Do you want to play a game?',
+            'text' => 'Choose of of actions',
+            'fallback' => 'You are unable to join',
+            'color' => '#3AA3E3',
+            'callback_id' => 'game',
+            'actions' => [],
+        ];
 
-        if ($this->getPlayerCount() != $this->getPlayersNeeded()) {
-            $action = new Action("game", "Join", "button", "join", "primary");
-            $attachment->addAction($action);
+
+        if ($this->getPlayerCount() !== $this->getPlayersNeeded()) {
+            $action = [
+                'name' => 'game',
+                'text' => 'Join',
+                'type' => 'button',
+                'value' => 'join',
+                'style' => 'primary',
+            ];
+            $attachment['actions'][] = $action;
         }
-        if ($status != 'started') {
-            $action = new Action("game", "Leave", "button", "leave", "danger");
-            $attachment->addAction($action);
+        if ($status !== 'started') {
+            $action = [
+                'name' => 'game',
+                'text' => 'Leave',
+                'type' => 'button',
+                'value' => 'leave',
+                'style' => 'danger',
+            ];
+            $attachment['actions'][] = $action;
         }
-        $action = new Action("game", "Cancel", "button", "cancel"); // Add confirm
-        $attachment->addAction($action);
 
-        if ($this->getPlayerCount() == $this->getPlayersNeeded() && $status != 'started') {
-            $action = new Action("game", "Start", "button", "start");
-            $attachment->addAction($action);
+        $action = [
+            'name' => 'game',
+            'text' => 'Cancel',
+            'type' => 'button',
+            'value' => 'cancel',
+        ];
+        $attachment['actions'][] = $action;
+
+        if ($status !== 'started' && $this->getPlayerCount() === $this->getPlayersNeeded()) {
+            $action = [
+                'name' => 'game',
+                'text' => 'Start',
+                'type' => 'button',
+                'value' => 'start',
+            ];
+            $attachment['actions'][] = $action;
         }
-        $action = new Action("game", "Refresh", "button", "refresh");
-        $attachment->addAction($action);
-        $action = new Action("game", "Notify", "button", "notify");
-        $attachment->addAction($action);
-        $messageBuilder->addAttachment($attachment);
 
-        return $messageBuilder;
+        $action = [
+            'name' => 'game',
+            'text' => 'Refresh',
+            'type' => 'button',
+            'value' => 'refresh',
+        ];
+        $attachment['actions'][] = $action;
+        $action = [
+            'name' => 'game',
+            'text' => 'Notify',
+            'type' => 'button',
+            'value' => 'notify',
+        ];
+        $attachment['actions'][] = $action;
+
+        $response['attachments'][] = $attachment;
+
+        return $response;
     }
 
     /**
-     * @param MessageBuilder $messageBuilder
-     * @return null|MessageBuilder
+     * @return array|null
      */
-    protected function getPostGameState(MessageBuilder $messageBuilder)
+    protected function getPostGameState()
     {
         $gameInstances = $this->db->getActiveGameInstances();
 
@@ -245,54 +286,108 @@ class FootballState
             return null;
         }
 
-        $messageBuilder->setText('Update game results!');
+        $response = [
+            'mrkdwn' => true,
+            'text' => 'Update game results!',
+            'attachments' => [],
+        ];
 
         foreach ($gameInstances as $k => $instance) {
-            if ($instance['status'] == 'deleted') {
-                $attachment = new Attachment('Game #' . ($k + 1), 'Done!');
+            if ($instance['status'] === 'deleted') {
+                $attachment = [
+                    'title' => 'Game #' . ($k + 1),
+                    'text' => 'Done!',
+                ];
             } else {
                 if (is_null($instance['player_3']) && is_null($instance['player_4'])) {
-                    $attachment = new ActionAttachment(
-                        'Game #' . ($k + 1),
-                        sprintf("Team A: <@%s>\nTeam B: <@%s>",
+                    $attachment = [
+                        'title' => 'Game #' . ($k + 1),
+                        'text' => sprintf(
+                            "Team A: <@%s>\nTeam B: <@%s>",
                             $instance['player_1'],
                             $instance['player_2']
                         ),
-                        'You are unable to join',
-                        '#3AA3E3'
-                    );
+                        'fallback' => 'You are unable to join',
+                        'color' => '#3AA3E3',
+                        'actions' => [],
+                    ];
                 } else {
-                    $attachment = new ActionAttachment(
-                        'Game #' . ($k + 1),
-                        sprintf("Team A: <@%s> <@%s>\nTeam B: <@%s> <@%s>",
+                    $attachment = [
+                        'title' => 'Game #' . ($k + 1),
+                        'text' => sprintf(
+                            "Team A: <@%s> <@%s>\nTeam B: <@%s> <@%s>",
                             $instance['player_1'],
                             $instance['player_2'],
                             $instance['player_3'],
-                            $instance['player_4']),
-                        'You are unable to join',
-                        '#3AA3E3'
-                    );
+                            $instance['player_4']
+                        ),
+                        'fallback' => 'You are unable to join',
+                        'color' => '#3AA3E3',
+                        'actions' => [],
+                    ];
                 }
+                $attachment['callback_id'] = 'update';
 
-                $attachment->setCallbackId('update');
-                $action = new Action('update_' . $instance['id'], 'A', 'button', 'A', 'primary');
-                $attachment->addAction($action);
-                $action = new Action('update_' . $instance['id'], 'B', 'button', 'B', 'danger');
-                $attachment->addAction($action);
-                $action = new Action('update_' . $instance['id'], 'Did not play', 'button', '-');
-                $attachment->addAction($action);
+                $action = [
+                    'name' => 'update_' . $instance['id'],
+                    'text' => 'A',
+                    'type' => 'button',
+                    'value' => 'A',
+                    'style' => 'primary',
+                ];
+                $attachment['actions'][] = $action;
+                $action = [
+                    'name' => 'update_' . $instance['id'],
+                    'text' => 'B',
+                    'type' => 'button',
+                    'value' => 'B',
+                    'style' => 'danger',
+                ];
+                $attachment['actions'][] = $action;
+                $action = [
+                    'name' => 'update_' . $instance['id'],
+                    'text' => 'Did not play',
+                    'type' => 'button',
+                    'value' => '-',
+                ];
+                $attachment['actions'][] = $action;
             }
-            $messageBuilder->addAttachment($attachment);
+            $response['attachments'][] = $attachment;
         }
-        $attachment = new ActionAttachment('Actions', '', 'You are unable to join', '#AA3AE3');
-        $attachment->setCallbackId('game');
-        $action = new Action("game", "Refresh", "button", "refresh");
-        $attachment->addAction($action);
-        $action = new Action("game", "Cancel", "button", "cancel");
-        $attachment->addAction($action);
-        $messageBuilder->addAttachment($attachment);
 
-        return $messageBuilder;
+        $attachment = [
+            'title' => 'Game #' . ($k + 1),
+            'text' => sprintf(
+                "Team A: <@%s> <@%s>\nTeam B: <@%s> <@%s>",
+                $instance['player_1'],
+                $instance['player_2'],
+                $instance['player_3'],
+                $instance['player_4']
+            ),
+            'fallback' => 'You are unable to join',
+            'color' => '#3AA3E3',
+            'callback_id' => 'game',
+            'actions' => [],
+        ];
+
+        $action = [
+            'name' => 'game',
+            'text' => 'Refresh',
+            'type' => 'button',
+            'value' => 'refresh',
+        ];
+        $attachment['actions'][] = $action;
+        $action = [
+            'name' => 'game',
+            'text' => 'Cancel',
+            'type' => 'button',
+            'value' => 'cancel',
+        ];
+        $attachment['actions'][] = $action;
+
+        $response['attachments'][] = $attachment;
+
+        return $response;
     }
 
     /**
@@ -302,9 +397,9 @@ class FootballState
     {
         $gameInstances = $this->db->getActiveGameInstances();
         $deletedGameInstances = array_filter($gameInstances, function ($instance) {
-            return $instance['status'] == 'deleted';
+            return $instance['status'] === 'deleted';
         });
-        if (count($gameInstances) == count($deletedGameInstances)) {
+        if (count($gameInstances) === count($deletedGameInstances)) {
             return true;
         }
 

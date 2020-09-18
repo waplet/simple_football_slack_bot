@@ -2,15 +2,13 @@
 
 namespace w\Bot;
 
-use Slack\ApiClient;
-use Slack\Message\Message;
-use Slack\Message\MessageBuilder;
+use JoliCode\Slack\Api\Client;
 use w\Bot\structures\SlackResponse;
 
 abstract class AbstractMessageManager
 {
     /**
-     * @var ApiClient
+     * @var Client
      */
     protected $client;
 
@@ -26,25 +24,25 @@ abstract class AbstractMessageManager
 
     protected static $commands;
 
-    public function __construct(FootballState $state, ApiClient $client)
+    public function __construct(FootballState $state, Client $client)
     {
         $this->state = $state;
         $this->client = $client;
     }
 
     /**
-     * @param Message $message
-     * @return null|MessageBuilder|string
+     * @param array $message
+     * @return null|array|string
      */
-    public function parseMessage(Message $message)
+    public function parseMessage(array $message)
     {
-        $messageText = trim($message->getText());
+        $messageText = trim($message['text']);
 
-        if (mb_strlen($messageText) === 0) {
+        if ($messageText === '') {
             return null;
         }
 
-        if (!in_array(mb_substr($messageText, 0, 1), self::$prepends)) {
+        if (!in_array(mb_substr($messageText, 0, 1), self::$prepends, true)) {
             return null;
         }
 
@@ -73,10 +71,10 @@ abstract class AbstractMessageManager
     }
 
     /**
-     * @param Message|null $message
+     * @param array $message
      * @return string
      */
-    private function onHelp(Message $message = null): string
+    private function onHelp(array $message): string
     {
         return implode(', ', array_map(function ($command) {
             return ',' . $command;

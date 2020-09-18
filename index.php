@@ -1,28 +1,22 @@
 <?php
 
-use React\EventLoop\Factory;
 use w\Bot\FootballState;
 
 include_once __DIR__ . '/init.php';
 $footballState = new FootballState(getenv('APP_BOT_PLAYERS_NEEDED'));
-$loop = Factory::create();
-
-$client = new Slack\ApiClient($loop);
-$client->setToken(getenv('APP_BOT_OAUTH_TOKEN'));
+$client = JoliCode\Slack\ClientFactory::create(getenv('APP_BOT_OAUTH_TOKEN'));
 
 $payload = null;
-$input = false;
-try {
-    $input = file_get_contents('php://input');
-    $payload = \Slack\Payload::fromJSON($input);
-} catch (UnexpectedValueException $e) {
-    if (!isset($_POST['payload'])) {
-        error_log($e->getMessage());
-        return;
-    }
+$input = file_get_contents('php://input');
+$payload = json_decode($input, true);
 
-    $payload = \Slack\Payload::fromJSON($_POST['payload']);
+if (is_null($payload)) {
+    $payload = json_decode($_POST['payload'], true);
 }
+if (empty($payload)) {
+    $payload = [];
+}
+
 $controller = \w\Bot\controllers\BaseController::getController();
 /** @var \w\Bot\controllers\BaseController $controllerInstance */
 $controllerInstance = new $controller($client, $footballState->db, $footballState, $payload);
@@ -35,25 +29,33 @@ try {
 }
 // error_log(print_r($response, true));
 if (!is_null($response)) {
+    // Action Responses
     if ($response instanceof \w\Bot\structures\HTTPResponse) {
         echo $response->message;
-    } else if ($response instanceof \w\Bot\structures\GameStateResponse) {
+    } elseif (is_string($response)) {
+        echo $response;
+    } elseif ($response instanceof \w\Bot\structures\GameStateResponse) {
         header('Content-type: application/json');
-        $messageBuilder = $footballState->getMessage($client->getMessageBuilder());
+        $messageBuilder = $footballState->getMessage();
         if (is_null($messageBuilder)) {
             return;
         }
-        echo json_encode($footballState->getMessage($client->getMessageBuilder())->create()->jsonSerialize(), JSON_PRETTY_PRINT);
-    } else if (is_string($response)) {
-        echo $response;
-    } else if ($response instanceof \w\Bot\structures\SlackResponse) {
-        $client->getChannelById(getenv('APP_BOT_CHANNEL'))->then(function (\Slack\Channel $channel) use ($client, $response) {
-            $client->send($response->message, $channel);
-        });
-    } else if ($response instanceof \Slack\Message\MessageBuilder) {
-        $client->getChannelById(getenv('APP_BOT_CHANNEL'))->then(function (\Slack\Channel $channel) use ($client, $response) {
-            $client->postMessage($response->setChannel($channel)->create());
-        });
+
+        echo json_encode($messageBuilder, JSON_PRETTY_PRINT);
+    // Event responses
+    } elseif ($response instanceof \w\Bot\structures\SlackResponse) {
+        $client->chatPostMessage(
+            [
+                'channel' => getenv('APP_BOT_CHANNEL'),
+                'text' => $response->message,
+                'mrkdwn' => true,
+            ]
+        );
+    } elseif (is_array($response)) {
+        $response['channel'] = getenv('APP_BOT_CHANNEL');
+        if (isset($response['attachments'])) {
+            $response['attachments'] = json_encode($response['attachments']);
+        }
+        $client->chatPostMessage($response);
     }
 }
-$loop->run();

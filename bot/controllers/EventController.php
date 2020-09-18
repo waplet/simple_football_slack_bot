@@ -2,7 +2,6 @@
 
 namespace w\Bot\controllers;
 
-use Slack\Message\Message;
 use w\Bot\MessageManager;
 
 class EventController extends BaseController
@@ -13,7 +12,7 @@ class EventController extends BaseController
     ];
 
     private $events = [
-        'message' => ['actionMessage', Message::class],
+        'message' => 'actionMessage',
     ];
 
     /**
@@ -25,7 +24,7 @@ class EventController extends BaseController
     }
 
     /**
-     * @return null|\Slack\Message\MessageBuilder|string
+     * @return null|string|array
      */
     public function processEvents()
     {
@@ -35,25 +34,25 @@ class EventController extends BaseController
             throw new \InvalidArgumentException('Invalid payload type received!');
         }
 
-        $class = $this->events[$event['type']][1];
-        return call_user_func([$this, $this->events[$event['type']][0]], new $class($this->client, $event));
+        return call_user_func([$this, $this->events[$event['type']]], $event);
     }
 
     /**
-     * @param Message $message
-     * @return null|\Slack\Message\MessageBuilder|string
+     * @param array $message
+     * @return null|string|array
      */
-    public function actionMessage(Message $message)
+    public function actionMessage(array $message)
     {
         // Skip changes
-        if (isset($message->data['subtype']) && $message->data['subtype'] == 'message_changed') {
-            return null;
-        }
-        if ($message->data['user'] == getenv('APP_BOT_USER')) {
+        if (isset($message['subtype']) && $message['subtype'] === 'message_changed') {
             return null;
         }
 
-        if (isset($message->data['event_time']) && (time() - (int)$message->data['event_time']) > 10) {
+        if (isset($message['bot_id']) && $message['bot_id'] === getenv('APP_BOT_USER')) {
+            return null;
+        }
+
+        if (isset($message['event_time']) && (time() - (int)$message['event_time']) > 10) {
             echo "Skipping event, it is from past!";
             return null;
         }

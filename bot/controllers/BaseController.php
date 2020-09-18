@@ -2,11 +2,10 @@
 
 namespace w\Bot\controllers;
 
-use Slack\ApiClient;
-use Slack\Message\MessageBuilder;
-use Slack\Payload;
+use JoliCode\Slack\Api\Client;
 use w\Bot\Database;
 use w\Bot\FootballState;
+use w\Bot\structures\GameStateResponse;
 use w\Bot\structures\HTTPResponse;
 use w\Bot\structures\SlackResponse;
 
@@ -26,10 +25,10 @@ abstract class BaseController
     ];
 
     function __construct(
-        ApiClient $client,
+        Client $client,
         Database $db,
         FootballState $footballState,
-        Payload $payload
+        array $payload
     ) {
         $this->client = $client;
         $this->db = $db;
@@ -58,7 +57,7 @@ abstract class BaseController
 
     /**
      * Returns everything a controller might return
-     * @return HTTPResponse|SlackResponse|MessageBuilder|string|null
+     * @return HTTPResponse|SlackResponse|GameStateResponse|array|string|null
      */
     public function process()
     {

@@ -2,11 +2,13 @@
   "minimum-stability": "dev",
   "prefer-stable": true,
   "require": {
-    "coderstephen/slack-client": "^0.3.0",
     "vlucas/phpdotenv": "^2.4",
     "ext-sqlite3": "*",
     "ext-json": "*",
-    "ext-mbstring": "*"
+    "ext-mbstring": "*",
+    "guzzlehttp/guzzle": "^7.0",
+    "jolicode/slack-php-api": "^3.0",
+    "http-interop/http-factory-guzzle": "^1.0"
   },
   "autoload": {
     "psr-4": {
