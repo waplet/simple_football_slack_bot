@@ -23,6 +23,12 @@ Invite to channel
     
     Same with actions "{yoursite}/action"
 
+# Usage docker
+
+    cp .env.example
+    // update .env
+    docker-compose up -d
+
 
 # Requirements
  - php7+
