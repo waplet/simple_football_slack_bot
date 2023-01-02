@@ -15,8 +15,13 @@ Invite to channel
     !help // Into slack channel
 
 # Setup
-    Host it
-    
+Host it
+
+    Need bot oAuth permissions:
+        channels:history
+        chat:write
+        users:read
+
     Subscribe to `channel.message` event
     
     Enable events path to "{yoursite}/event"
