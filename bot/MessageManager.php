@@ -4,17 +4,21 @@ namespace w\Bot;
 
 class MessageManager extends AbstractMessageManager
 {
-    protected static $commands = [
+    protected static array $commands = [
+        /**
+         * {@see MessageManager::onPing()}
+         * {@see MessageManager::onTop()}
+         * {@see MessageManager::onBegin()}
+         * {@see MessageManager::onUrl()}
+         */
         'ping' => 'onPing',
         'top' => 'onTop',
         'begin' => 'onBegin',
         'url' => 'onUrl',
-        'name' => 'onUpdateName',
     ];
 
     /**
-     * @param array $message
-     * @return string
+     * @noinspection PhpUnusedParameterInspection
      */
     protected function onPing(array $message): string
     {
@@ -25,9 +29,10 @@ class MessageManager extends AbstractMessageManager
      * @param array $message
      * @return string
      */
-    protected function onTop(array $message)
+    protected function onTop(array $message): string
     {
-        $topList = $this->state->db->getTopList();
+        $channel = $message['channel'];
+        $topList = $this->state->db->getTopList($channel);
 
         if (empty($topList)) {
             return 'No players in top!';
@@ -35,7 +40,7 @@ class MessageManager extends AbstractMessageManager
 
         $result = '';
         foreach ($topList as $k => $user) {
-            $score = $user['games_played'] ? number_format((($user['games_won'] * 100) / $user['games_played']),0) : 0;
+            $score = $user['games_played'] ? number_format((($user['games_won'] * 100) / $user['games_played'])) : 0;
             if (!empty($user['name'])) {
                 $result .= ($k + 1) . '. *' . $user['name'] . '*';
             } else {
@@ -53,51 +58,34 @@ class MessageManager extends AbstractMessageManager
      * @param array $message
      * @return array|null
      */
-    protected function onBegin(array $message)
+    protected function onBegin(array $message): ?array
     {
-        if ($this->state->getPlayerCount() > 0) {
-            return $this->state->getMessage();
+        $channel = $message['channel'];
+
+        if ($this->state->getPlayerCount($channel) > 0) {
+            return $this->state->getGameStateResponse($channel);
         }
 
-        if (!$this->state->join($message['user'])) {
+        if (!$this->state->join($channel, $message['user'])) {
             return null;
         }
 
         $usersInfo = $this->client->usersInfo(['user' => $message['user']]);
         $user = $usersInfo ? $usersInfo->getUser() : null;
         if ($user) {
-            if (!$this->state->db->hasUser($user->getId())) {
-                $this->state->db->createUser($user->getId(), $user->getRealName() ?? $user->getName());
-            } elseif (!$this->state->db->hasName($user->getId())) {
-                $this->state->db->updateName($user->getId(), $user->getRealName() ?? $user->getName());
+            if (!$this->state->db->hasUser($channel, $user->getId())) {
+                $this->state->db->createUser($channel, $user->getId(), $user->getRealName() ?? $user->getName());
+            } elseif (!$this->state->db->hasName($channel, $user->getId())) {
+                $this->state->db->updateName($channel, $user->getId(), $user->getRealName() ?? $user->getName());
             }
         }
 
-        return $this->state->getMessage();
+        return $this->state->getGameStateResponse($channel);
     }
 
-    private function eventSort(array $eventA, array $eventB)
-    {
-        return (int)$eventA['start'] <=> (int)$eventB['start'];
-    }
-
-    protected function onUrl(array $message)
+    /** @noinspection PhpUnusedParameterInspection */
+    protected function onUrl(array $message): string
     {
         return 'https://github.com/waplet/simple_football_slack_bot/';
-    }
-
-    protected function onUpdateName(array $message)
-    {
-        $usersInfo = $this->client->usersInfo(['user' => $message['user']]);
-        $user = $usersInfo ? $usersInfo->getUser() : null;
-        if ($user) {
-            if (!$this->state->db->hasUser($user->getId())) {
-                return null;
-            }
-
-            $this->state->db->updateName($user->getId(), $user->getRealName() ?? $user->getName());
-        }
-
-        return null;
     }
 }

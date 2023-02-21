@@ -2,23 +2,23 @@
 
 namespace w\Bot\controllers;
 
+use InvalidArgumentException;
 use JoliCode\Slack\Api\Client;
 use w\Bot\Database;
 use w\Bot\FootballState;
 use w\Bot\structures\GameStateResponse;
-use w\Bot\structures\HTTPResponse;
 use w\Bot\structures\SlackResponse;
 
 abstract class BaseController
 {
-    protected $db;
-    protected $client;
-    protected $footballState;
-    protected $payload;
+    protected Database $db;
+    protected Client $client;
+    protected FootballState $footballState;
+    protected array $payload;
 
-    protected $types = [];
+    protected array $types = [];
 
-    private static $routes = [
+    private static array $routes = [
         '/event' => EventController::class,
         '/default' => DefaultController::class,
         '/action' => ActionController::class,
@@ -40,7 +40,7 @@ abstract class BaseController
      * Returns controller Class name
      * @return string
      */
-    public static function getController()
+    public static function getController(): string
     {
         $requestUrl = $_SERVER['REQUEST_URI'];
         // strip GET variables from URL
@@ -57,7 +57,7 @@ abstract class BaseController
 
     /**
      * Returns everything a controller might return
-     * @return HTTPResponse|SlackResponse|GameStateResponse|array|string|null
+     * @return SlackResponse|GameStateResponse|array|string|null
      */
     public function process()
     {
@@ -66,7 +66,7 @@ abstract class BaseController
         //     static::class . "\n" . json_encode($this->payload->getData(), JSON_PRETTY_PRINT) . "\n", FILE_APPEND);
 
         if (!isset($this->types[$this->payload['type']])) {
-            throw new \InvalidArgumentException('Invalid payload type received!');
+            throw new InvalidArgumentException('Invalid payload type received!');
         }
 
         return call_user_func([$this, $this->types[$this->payload['type']]]);

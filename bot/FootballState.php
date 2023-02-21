@@ -2,23 +2,18 @@
 
 namespace w\Bot;
 
-use Slack\Message\Attachment;
-use Slack\Message\MessageBuilder;
+use SQLite3;
 
 class FootballState
 {
-    protected $playersNeeded;
+    protected int $playersNeeded;
 
     /**
-     * @var null|\SQLite3
+     * @var null|SQLite3
      */
     public $db = null;
 
-    /**
-     * FootballState constructor.
-     * @param int $playersNeeded
-     */
-    public function __construct($playersNeeded = null)
+    public function __construct(int $playersNeeded = null)
     {
         $this->db = new Database();
         if ($playersNeeded == 2 || $playersNeeded == 4) {
@@ -31,72 +26,54 @@ class FootballState
 
     /**
      * Return true if joined, false if already present
-     * @param string $player
-     * @return bool
      */
-    public function join($player): bool
+    public function join(string $channel, string $player): bool
     {
-        if (in_array($player, $this->getJoinedPlayers(), true)) {
+        if (in_array($player, $this->getJoinedPlayers($channel), true)) {
             return false;
         }
 
-        if (!$this->db->getActiveGame()) {
-            return $this->db->createActiveGame($player);
+        if (!$this->db->getActiveGame($channel)) {
+            return $this->db->createActiveGame($channel, $player);
         }
 
-        return $this->db->addPlayer($player);
+        return $this->db->addPlayer($channel, $player);
     }
 
-    /**
-     * Return true if removed player
-     * @param string $player
-     * @return bool
-     */
-    public function leave($player): bool
+    public function leave(string $channel, string $player): bool
     {
-        if (!in_array($player, $this->getJoinedPlayers())) {
+        if (!in_array($player, $this->getJoinedPlayers($channel))) {
             return false;
         }
 
-        return $this->db->removePlayer($player);
+        return $this->db->removePlayer($channel, $player);
     }
 
-    /**
-     * @return int
-     */
-    public function getPlayerCount(): int
+    public function getPlayerCount(string $channel): int
     {
-        return count($this->getJoinedPlayers());
+        return count($this->getJoinedPlayers($channel));
     }
 
-    /**
-     * @param string $player
-     * @return bool
-     */
-    public function isManager($player): bool
+    public function isManager(string $channel, string $player): bool
     {
         if ($player === getenv('ADMIN')) {
             return true;
         }
 
-        if ($this->getPlayerCount() == 0) {
+        if ($this->getPlayerCount($channel) == 0) {
             return false;
         }
 
-        if ($this->amI($player)) {
+        if ($this->amI($channel, $player)) {
             return true;
         }
 
         return false;
     }
 
-    /**
-     * @param string $player
-     * @return bool
-     */
-    public function isFirst($player): bool
+    public function isFirst(string $channel, string $player): bool
     {
-        $players = $this->getJoinedPlayers();
+        $players = $this->getJoinedPlayers($channel);
 
         if (empty($players)) {
             return false;
@@ -109,83 +86,61 @@ class FootballState
         return false;
     }
 
-    /**
-     * @param $player
-     * @return bool
-     */
-    public function start($player): bool
+    public function start(string $channel, string $player): bool
     {
-        if ($this->getPlayerCount() != $this->playersNeeded) {
+        if ($this->getPlayerCount($channel) != $this->playersNeeded) {
             return false;
         }
 
-        $playId = $this->db->createGameInstances($player, $this->getJoinedPlayers());
+        $playId = $this->db->createGameInstances($player, $this->getJoinedPlayers($channel));
         if ($playId === -1) {
             return false;
         }
 
-        $this->db->startGame($playId);
+        $this->db->startGame($channel, $playId);
 
         return true;
     }
 
-    /**
-     * @return array
-     */
-    public function getJoinedPlayers(): array
+    public function getJoinedPlayers(string $channel): array
     {
-        return $this->db->getPlayers();
+        return $this->db->getPlayers($channel);
     }
 
-    /**
-     * @return int
-     */
     public function getPlayersNeeded(): int
     {
         return $this->playersNeeded;
     }
 
-    /**
-     * @return bool
-     */
-    public function clear(): bool
+    public function clear(string $channel): bool
     {
-        $this->db->clearActiveGame();
+        $this->db->clearActiveGame($channel);
 
         return true;
     }
 
-    /**
-     * @return array|null
-     */
-    public function getMessage()
+    public function getGameStateResponse(string $channel): ?array
     {
-        if ($this->db->getStatus() == 'started') {
-            return $this->getPostGameState();
+        if ($this->db->getStatus($channel) === 'started') {
+            return $this->getPostGameState($channel);
         }
 
-        return $this->getGameState();
+        return $this->getGameState($channel);
     }
 
-    /**
-     * @param string $player
-     * @return bool
-     */
-    public function amI($player): bool
+    public function amI(string $channel, string $player): bool
     {
-        return in_array($player, $this->getJoinedPlayers(), true);
+        return in_array($player, $this->getJoinedPlayers($channel), true);
     }
 
-    /**
-     * @return array|null
-     */
-    protected function getGameState()
+    protected function getGameState(string $channel): ?array
     {
         $response = [
+            'channel' => $channel,
             'mrkdwn' => true,
         ];
 
-        $status = $this->db->getStatus();
+        $status = $this->db->getStatus($channel);
         if ($status === 'none') {
             $response['text'] = 'Cancelled!';
 
@@ -196,11 +151,11 @@ class FootballState
             . "Status: *%s*\n"
             . "Players joined (%d/%d): %s",
             $status,
-            count($this->getJoinedPlayers()),
+            count($this->getJoinedPlayers($channel)),
             $this->getPlayersNeeded(),
             implode(' ', array_map(function ($userId) {
                 return '<@' . $userId . '>';
-            }, $this->getJoinedPlayers()))
+            }, $this->getJoinedPlayers($channel)))
         );
 
         $response['text'] = $text;
@@ -216,7 +171,7 @@ class FootballState
         ];
 
 
-        if ($this->getPlayerCount() !== $this->getPlayersNeeded()) {
+        if ($this->getPlayerCount($channel) !== $this->getPlayersNeeded()) {
             $action = [
                 'name' => 'game',
                 'text' => 'Join',
@@ -245,7 +200,7 @@ class FootballState
         ];
         $attachment['actions'][] = $action;
 
-        if ($status !== 'started' && $this->getPlayerCount() === $this->getPlayersNeeded()) {
+        if ($status !== 'started' && $this->getPlayerCount($channel) === $this->getPlayersNeeded()) {
             $action = [
                 'name' => 'game',
                 'text' => 'Start',
@@ -275,18 +230,16 @@ class FootballState
         return $response;
     }
 
-    /**
-     * @return array|null
-     */
-    protected function getPostGameState()
+    protected function getPostGameState(string $channel): ?array
     {
-        $gameInstances = $this->db->getActiveGameInstances();
+        $gameInstances = $this->db->getActiveGameInstances($channel);
 
         if (empty($gameInstances)) {
             return null;
         }
 
         $response = [
+            'channel' => $channel,
             'mrkdwn' => true,
             'text' => 'Update game results!',
             'attachments' => [],
@@ -356,14 +309,8 @@ class FootballState
         }
 
         $attachment = [
-            'title' => 'Game #' . ($k + 1),
-            'text' => sprintf(
-                "Team A: <@%s> <@%s>\nTeam B: <@%s> <@%s>",
-                $instance['player_1'],
-                $instance['player_2'],
-                $instance['player_3'],
-                $instance['player_4']
-            ),
+            'title' => 'Actions',
+            'text' => '',
             'fallback' => 'You are unable to join',
             'color' => '#3AA3E3',
             'callback_id' => 'game',
@@ -390,12 +337,9 @@ class FootballState
         return $response;
     }
 
-    /**
-     * @return bool
-     */
-    public function isFinishedGame()
+    public function isFinishedGame(string $channel): bool
     {
-        $gameInstances = $this->db->getActiveGameInstances();
+        $gameInstances = $this->db->getActiveGameInstances($channel);
         $deletedGameInstances = array_filter($gameInstances, function ($instance) {
             return $instance['status'] === 'deleted';
         });
@@ -404,66 +348,5 @@ class FootballState
         }
 
         return false;
-    }
-
-    /**
-     * @param array $rankByWonGames
-     * @return array
-     */
-    public function getRankByWinRate(array $rankByWonGames = [])
-    {
-        usort($rankByWonGames, function ($userA, $userB) {
-            $scoreA = $userA['games_played'] ? $userA['games_won'] / $userA['games_played'] : 0;
-            $scoreB = $userB['games_played'] ? $userB['games_won'] / $userB['games_played'] : 0;
-
-            if ($scoreA > $scoreB) {
-                return -1;
-            } else if ($scoreA < $scoreB) {
-                return 1;
-            } else {
-                if ($userA['games_won'] > $userB['games_won']) {
-                    return -1;
-                } else if ($userA['games_won'] < $userB['games_won']) {
-                    return 1;
-                }
-            }
-
-            return 0;
-        });
-
-        return $rankByWonGames;
-    }
-
-    /**
-     * @param array $rankByWonGames
-     * @param array $rankByWinRate
-     * @return array
-     */
-    public function mergeRanks(array $rankByWonGames, array $rankByWinRate)
-    {
-        $userIdDictionary = [];
-        foreach ($rankByWinRate as $index => $user) {
-            $userIdDictionary[$user['id']] = [
-                'user' => $user,
-                'rank' => $index,
-            ];
-        }
-
-        foreach ($rankByWonGames as $index => $user) {
-            $userIdDictionary[$user['id']]['rank'] += $index;
-            $userIdDictionary[$user['id']]['rank'] /= 2.0;
-        }
-
-        usort($userIdDictionary, function ($a, $b) {
-            return $a['rank'] > $b['rank'];
-        });
-
-        $rank = [];
-
-        foreach ($userIdDictionary as $userId => $rankData) {
-            $rank[] = $rankData['user'];
-        }
-
-        return $rank;
     }
 }

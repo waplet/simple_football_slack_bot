@@ -1,9 +1,12 @@
 <?php
 
+use w\Bot\controllers\BaseController;
 use w\Bot\FootballState;
+use w\Bot\structures\GameStateResponse;
+use w\Bot\structures\SlackResponse;
 
 include_once __DIR__ . '/init.php';
-$footballState = new FootballState(getenv('APP_BOT_PLAYERS_NEEDED'));
+$footballState = new FootballState((int)getenv('APP_BOT_PLAYERS_NEEDED'));
 $client = JoliCode\Slack\ClientFactory::create(getenv('APP_BOT_OAUTH_TOKEN'));
 
 $payload = null;
@@ -17,8 +20,8 @@ if (empty($payload)) {
     $payload = [];
 }
 
-$controller = \w\Bot\controllers\BaseController::getController();
-/** @var \w\Bot\controllers\BaseController $controllerInstance */
+$controller = BaseController::getController();
+/** @var BaseController $controllerInstance */
 $controllerInstance = new $controller($client, $footballState->db, $footballState, $payload);
 
 try {
@@ -30,29 +33,29 @@ try {
 // error_log(print_r($response, true));
 if (!is_null($response)) {
     // Action Responses
-    if ($response instanceof \w\Bot\structures\HTTPResponse) {
-        echo $response->message;
-    } elseif (is_string($response)) {
+    if (is_string($response)) {
         echo $response;
-    } elseif ($response instanceof \w\Bot\structures\GameStateResponse) {
+    } elseif ($response instanceof GameStateResponse) {
         header('Content-type: application/json');
-        $messageBuilder = $footballState->getMessage();
+        $messageBuilder = $footballState->getGameStateResponse($response->channel);
         if (is_null($messageBuilder)) {
             return;
         }
 
         echo json_encode($messageBuilder, JSON_PRETTY_PRINT);
     // Event responses
-    } elseif ($response instanceof \w\Bot\structures\SlackResponse) {
+    } elseif ($response instanceof SlackResponse) {
         $client->chatPostMessage(
             [
-                'channel' => getenv('APP_BOT_CHANNEL'),
+                'channel' => $response->channel,
                 'text' => $response->message,
                 'mrkdwn' => true,
             ]
         );
     } elseif (is_array($response)) {
-        $response['channel'] = getenv('APP_BOT_CHANNEL');
+        if (!isset($response['channel'])) {
+            $response['channel'] = getenv('APP_BOT_CHANNEL');
+        }
         if (isset($response['attachments'])) {
             $response['attachments'] = json_encode($response['attachments']);
         }

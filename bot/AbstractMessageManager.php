@@ -7,22 +7,12 @@ use w\Bot\structures\SlackResponse;
 
 abstract class AbstractMessageManager
 {
-    /**
-     * @var Client
-     */
-    protected $client;
+    protected Client $client;
+    protected FootballState $state;
 
-    /**
-     * @var FootballState
-     */
-    protected $state;
+    protected static array $prepends = [',']; // Can only be in length of 1
 
-    /**
-     * @var array
-     */
-    protected static $prepends = [',']; // Can be only in length of 1
-
-    protected static $commands;
+    protected static array $commands = [];
 
     public function __construct(FootballState $state, Client $client)
     {
@@ -60,9 +50,10 @@ abstract class AbstractMessageManager
             }
         }
 
-        // If message manager response is string, let's post is as slack message
+        // If message manager response is string, let's post is as Slack message
         if (is_string($responseText)) {
             $response = new SlackResponse();
+            $response->channel = $message['channel'];
             $response->message = $responseText;
             $responseText = $response;
         }
@@ -71,8 +62,7 @@ abstract class AbstractMessageManager
     }
 
     /**
-     * @param array $message
-     * @return string
+     * @noinspection PhpUnusedParameterInspection
      */
     private function onHelp(array $message): string
     {

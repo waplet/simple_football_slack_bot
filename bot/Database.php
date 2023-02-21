@@ -2,7 +2,10 @@
 
 namespace w\Bot;
 
-class Database extends \SQLite3
+use Exception;
+use SQLite3;
+
+class Database extends SQLite3
 {
     const DF = 'Y-m-d H:i:s';
 
@@ -11,14 +14,11 @@ class Database extends \SQLite3
         parent::__construct(ROOT . '/data/football.db');
     }
 
-    /**
-     * @param string $userId
-     * @return bool
-     */
-    public function hasUser($userId)
+    public function hasUser(string $channel, string $userId): bool
     {
-        $query = $this->prepare('SELECT id FROM users WHERE id = :userId');
+        $query = $this->prepare('SELECT id FROM users WHERE id = :userId AND channel_id = :channelId');
         $query->bindParam('userId', $userId);
+        $query->bindParam('channelId', $channel);
 
         $data = $query->execute()->fetchArray(SQLITE3_ASSOC);
         $query->close();
@@ -30,14 +30,11 @@ class Database extends \SQLite3
         return false;
     }
 
-    /**
-     * @param string $userId
-     * @return bool
-     */
-    public function hasName($userId)
+    public function hasName(string $channel, string $userId): bool
     {
-        $query = $this->prepare('SELECT name FROM users WHERE id = :userId');
+        $query = $this->prepare('SELECT name FROM users WHERE id = :userId AND channel_id = :channelId');
         $query->bindParam('userId', $userId);
+        $query->bindParam('channelId', $channel);
 
         $data = $query->execute()->fetchArray(SQLITE3_ASSOC);
         $query->close();
@@ -50,13 +47,13 @@ class Database extends \SQLite3
     }
 
     /**
-     * @param string $userId
      * @return array|bool
      */
-    public function getUser($userId)
+    public function getUser(string $channel, string $userId)
     {
-        $query = $this->prepare('SELECT * FROM users WHERE id = :userId');
+        $query = $this->prepare('SELECT * FROM users WHERE id = :userId AND channel_id = :channelId');
         $query->bindParam('userId', $userId);
+        $query->bindParam('channelId', $channel);
 
         $data = $query->execute()->fetchArray(SQLITE3_ASSOC);
         $query->close();
@@ -68,16 +65,28 @@ class Database extends \SQLite3
         return false;
     }
 
-    /**
-     * @param string $userId
-     * @param string|null $name
-     * @return bool
-     */
-    public function createUser($userId, $name = null)
+    public function createUser(string $channel, string $userId, ?string $name = null): bool
     {
-        $query = $this->prepare('INSERT INTO users(id, games_played, games_won, name) VALUES (:userId, 0, 0, :name)');
+        $query = $this->prepare('INSERT INTO users(id, games_played, games_won, name, channel_id) VALUES (:userId, 0, 0, :name, :channelId)');
         $query->bindParam('userId', $userId);
         $query->bindParam('name', $name);
+        $query->bindParam('channelId', $channel);
+
+        $result = $query->execute();
+
+        if ($result) {
+            return true;
+        }
+
+        return false;
+    }
+
+    public function updateName(string $channel, string $userId, ?string $name = null): bool
+    {
+        $query = $this->prepare('UPDATE users SET name = :name WHERE id = :userId AND channel_id = :channelId');
+        $query->bindParam('userId', $userId);
+        $query->bindParam('name', $name);
+        $query->bindParam('channelId', $channel);
 
         $result = $query->execute();
 
@@ -89,37 +98,13 @@ class Database extends \SQLite3
     }
 
     /**
-     * @param string $userId
-     * @param string|null $name
-     * @return bool
+     * @throws Exception
      */
-    public function updateName($userId, $name = null)
+    public function incrementUserGames(string $channel, string $userId, int $gamesPlayed, int $gamesWon): bool
     {
-        $query = $this->prepare('UPDATE users SET name = :name WHERE id = :userId');
-        $query->bindParam('userId', $userId);
-        $query->bindParam('name', $name);
-
-        $result = $query->execute();
-
-        if ($result) {
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * @param string $userId
-     * @param int $gamesPlayed
-     * @param int $gamesWon
-     * @return bool
-     * @throws \Exception
-     */
-    public function incrementUserGames($userId, $gamesPlayed, $gamesWon)
-    {
-        if (!$this->hasUser($userId)) {
-            if (!$this->createUser($userId)) {
-                throw new \Exception('Could not create user!');
+        if (!$this->hasUser($channel, $userId)) {
+            if (!$this->createUser($channel, $userId)) {
+                throw new Exception('Could not create user!');
             }
         }
 
@@ -129,11 +114,14 @@ class Database extends \SQLite3
     games_played = games_played + :gamesPlayed,
     games_won = games_won + :gamesWon, 
     last_played = :lastPlayed
-  WHERE id = :userId;'
+  WHERE id = :userId
+     AND channel_id = :channelId
+;'
         );
         $query->bindParam('userId', $userId);
         $query->bindParam('gamesPlayed', $gamesPlayed);
         $query->bindParam('gamesWon', $gamesWon);
+        $query->bindParam('channelId', $channel);
         $query->bindValue('lastPlayed', gmdate(self::DF));
 
         $result = $query->execute();
@@ -145,16 +133,15 @@ class Database extends \SQLite3
         return false;
     }
 
-    /**
-     * @return array
-     */
-    public function getTopList()
+    public function getTopList(string $channel): array
     {
         $query = $this->prepare('
             SELECT * FROM users
             WHERE last_played BETWEEN DATE("now", "-1 month") AND CURRENT_TIMESTAMP
+                AND channel_id = :channelId
             ORDER BY current_elo DESC, games_won DESC, games_played ASC
         ');
+        $query->bindParam('channelId', $channel);
         $result = $query->execute();
 
         $data = [];
@@ -167,21 +154,7 @@ class Database extends \SQLite3
         return $data;
     }
 
-    public function clearDatabase()
-    {
-        $this->exec('DELETE FROM users');
-        $this->exec('DELETE FROM games');
-        $this->exec('DELETE FROM plays');
-
-        return true;
-    }
-
-    /**
-     * @param string $owner
-     * @param array $players
-     * @return int
-     */
-    public function createGameInstances($owner, array $players)
+    public function createGameInstances(string $owner, array $players): int
     {
         $countPlayers = count($players);
 
@@ -206,7 +179,7 @@ class Database extends \SQLite3
      * @param string $owner
      * @return int
      */
-    private function createPlay($owner): int
+    private function createPlay(string $owner): int
     {
         $query = $this->prepare('INSERT INTO plays(owner) VALUES(:owner)');
         $query->bindParam('owner', $owner);
@@ -215,15 +188,13 @@ class Database extends \SQLite3
         return $this->lastInsertRowID();
     }
 
-    /**
-     * @param int $playId
-     * @param string $player1
-     * @param string $player2
-     * @param string $player3
-     * @param string $player4
-     */
-    private function createGameInstance($playId, $player1, $player2, $player3 = null, $player4 = null)
-    {
+    private function createGameInstance(
+        int $playId,
+        string $player1,
+        string $player2,
+        ?string $player3 = null,
+        ?string $player4 = null
+    ): void {
         $query = $this->prepare('
             INSERT INTO games(play_id, player_1, player_2, player_3, player_4)
             VALUES (:playId, :player1, :player2, :player3, :player4);
@@ -238,19 +209,9 @@ class Database extends \SQLite3
 
     /**
      * @param int $gameId
-     */
-    public function deleteGame($gameId)
-    {
-        $query = $this->prepare('DELETE FROM games WHERE id = :gameId');
-        $query->bindParam('gameId', $gameId);
-        $query->execute();
-    }
-
-    /**
-     * @param int $gameId
      * @return bool
      */
-    public function markGameAsDeleted($gameId)
+    public function markGameAsDeleted(int $gameId): bool
     {
         $query = $this->prepare('UPDATE games SET status = :status WHERE id = :gameId');
         $query->bindParam('gameId', $gameId);
@@ -261,7 +222,7 @@ class Database extends \SQLite3
         return true;
     }
 
-    public function markGameAsWon($gameId, $teamAWon)
+    public function markGameAsWon(int $gameId, bool $teamAWon): bool
     {
         $query = $this->prepare('UPDATE games SET who_won = :whoWon WHERE id = :gameId');
         $query->bindValue('gameId', $gameId);
@@ -273,13 +234,10 @@ class Database extends \SQLite3
     }
 
     /**
-     * @param int $gameId
-     * @param int $playersNeeded
-     * @param bool $teamAWon
-     * @return bool
-     * @throws \Exception
+     * @throws Exception
+     * @noinspection PhpIfWithCommonPartsInspection
      */
-    public function updateGame($gameId, $playersNeeded, $teamAWon = true)
+    public function updateGame(string $channel, int $gameId, int $playersNeeded, bool $teamAWon = true): bool
     {
         $game = $this->getGame($gameId);
 
@@ -289,33 +247,29 @@ class Database extends \SQLite3
 
         if ($playersNeeded == 2) {
             // 1 v 1
-            $this->incrementUserGames($game['player_1'], 1, $teamAWon ? 1 : 0);
-            $this->incrementUserGames($game['player_2'], 1, $teamAWon ? 0 : 1);
+            $this->incrementUserGames($channel, $game['player_1'], 1, $teamAWon ? 1 : 0);
+            $this->incrementUserGames($channel, $game['player_2'], 1, $teamAWon ? 0 : 1);
         } else {
             // 2 v 2
-            $this->incrementUserGames($game['player_1'], 1, $teamAWon ? 1 : 0);
-            $this->incrementUserGames($game['player_2'], 1, $teamAWon ? 1 : 0);
-            $this->incrementUserGames($game['player_3'], 1, $teamAWon ? 0 : 1);
-            $this->incrementUserGames($game['player_4'], 1, $teamAWon ? 0 : 1);
+            $this->incrementUserGames($channel, $game['player_1'], 1, $teamAWon ? 1 : 0);
+            $this->incrementUserGames($channel, $game['player_2'], 1, $teamAWon ? 1 : 0);
+            $this->incrementUserGames($channel, $game['player_3'], 1, $teamAWon ? 0 : 1);
+            $this->incrementUserGames($channel,$game['player_4'], 1, $teamAWon ? 0 : 1);
         }
 
-        $this->markGameAsWon($game['id'], $teamAWon);
-        $this->markGameAsDeleted($game['id']);
+        $this->markGameAsWon((int)$game['id'], $teamAWon);
+        $this->markGameAsDeleted((int)$game['id']);
 
         /**
          * Add ELOs
          */
-        $this->updateTemporaryElo($game, $playersNeeded, $teamAWon);
+        $this->updateTemporaryElo($channel, $game, $playersNeeded, $teamAWon);
 
 
         return true;
     }
 
-    /**
-     * @param int $gameId
-     * @return array
-     */
-    public function getGame($gameId)
+    public function getGame(int $gameId): array
     {
         $query = $this->prepare('
             SELECT * FROM games
@@ -327,13 +281,18 @@ class Database extends \SQLite3
     }
 
     /**
+     * @param string $channel
      * @return array|bool
      */
-    public function getActiveGame()
+    public function getActiveGame(string $channel)
     {
-        $result = $this->prepare('
-            SELECT * FROM active_game
-        ')->execute()->fetchArray();
+        $query = $this->prepare('
+            SELECT * FROM active_game WHERE channel_id = :channelId
+        ');
+        $query->bindParam('channelId', $channel);
+        $result = $query
+            ->execute()
+            ->fetchArray();
 
         if (!$result) {
             return false;
@@ -342,12 +301,9 @@ class Database extends \SQLite3
         return $result;
     }
 
-    /**
-     * @return string
-     */
-    public function getStatus()
+    public function getStatus(string $channel): string
     {
-        $game = $this->getActiveGame();
+        $game = $this->getActiveGame($channel);
 
         if (!$game) {
             return 'none';
@@ -356,12 +312,9 @@ class Database extends \SQLite3
         return $game['status'];
     }
 
-    /**
-     * @return string[]
-     */
-    public function getPlayers()
+    public function getPlayers(string $channel): array
     {
-        $game = $this->getActiveGame();
+        $game = $this->getActiveGame($channel);
 
         if (!$game) {
             return [];
@@ -370,13 +323,9 @@ class Database extends \SQLite3
         return json_decode($game['players'], JSON_OBJECT_AS_ARRAY);
     }
 
-    /**
-     * @param string $player
-     * @return bool
-     */
-    public function addPlayer($player)
+    public function addPlayer(string $channel, string $player): bool
     {
-        $game = $this->getActiveGame();
+        $game = $this->getActiveGame($channel);
 
         if (!$game) {
             return false;
@@ -386,21 +335,18 @@ class Database extends \SQLite3
         $players = array_values($players);
         $players[] = $player;
 
-        $query = $this->prepare('UPDATE active_game SET players = :players');
+        $query = $this->prepare('UPDATE active_game SET players = :players WHERE channel_id = :channelId');
         $players = json_encode($players);
         $query->bindParam('players', $players);
+        $query->bindParam('channelId', $channel);
         $query->execute();
 
         return true;
     }
 
-    /**
-     * @param string $player
-     * @return bool
-     */
-    public function removePlayer($player)
+    public function removePlayer(string $channel, string $player): bool
     {
-        $game = $this->getActiveGame();
+        $game = $this->getActiveGame($channel);
 
         if (!$game) {
             return false;
@@ -413,62 +359,60 @@ class Database extends \SQLite3
             return false;
         }
 
-        $query = $this->prepare('UPDATE active_game SET players = :players');
+        $query = $this->prepare('UPDATE active_game SET players = :players WHERE channel_id = :channelId');
         $playersAfter = json_encode($playersAfter);
         $query->bindParam('players', $playersAfter);
+        $query->bindParam('channelId', $channel);
         $query->execute();
 
         return true;
     }
 
-    public function clearActiveGame()
+    public function clearActiveGame(string $channel): bool
     {
-        $this->exec('DELETE FROM active_game');
+        $query = $this->prepare('DELETE FROM active_game WHERE channel_id = :channelId');
+        $query->bindParam('channelId', $channel);
+
+        $query->execute();
 
         return true;
     }
 
-    /**
-     * @param string $player
-     * @return bool
-     */
-    public function createActiveGame($player)
+    public function createActiveGame(string $channel, string $player): bool
     {
         $query = $this->prepare('
-            INSERT INTO active_game(players, status) 
-            VALUES(:players, \'pending\')
+            INSERT INTO active_game(players, status, channel_id) 
+            VALUES(:players, :status, :channelId)
         ');
         $players = json_encode([$player]);
         $query->bindParam('players', $players);
+        $query->bindParam('channelId', $channel);
+        $query->bindValue('status', 'pending');
         $query->execute();
 
         return true;
     }
 
-    /**
-     * @param int $playId
-     * @return bool
-     */
-    public function startGame($playId)
+    public function startGame(string $channel, int $playId): bool
     {
         $query = $this->prepare('
             UPDATE active_game
-              SET status = \'started\',
+              SET status = :status,
               play_id = :playId
+            WHERE channel_id = :channelId
         ');
 
         $query->bindParam('playId', $playId);
+        $query->bindParam('channelId', $channel);
+        $query->bindValue('status', 'started');
         $query->execute();
 
         return true;
     }
 
-    /**
-     * @return array
-     */
-    public function getActiveGameInstances()
+    public function getActiveGameInstances(string $channel): array
     {
-        $game = $this->getActiveGame();
+        $game = $this->getActiveGame($channel);
 
         if (!$game) {
             return [];
@@ -493,40 +437,54 @@ class Database extends \SQLite3
     /**
      * Summarizes total ELO of players, which were earned in games
      */
-    public function summarizeElo()
+    public function summarizeElo(string $channel)
     {
-        $this->exec('UPDATE users SET previous_elo = current_elo');
-        $this->exec('UPDATE users SET current_elo = current_elo + temp_elo');
-        $this->exec('UPDATE users SET temp_elo = 0'); // Reset temporary elo for all users
+        $params = [
+            'channelId' => $channel,
+        ];
+
+        $this->execWithParams('UPDATE users SET previous_elo = current_elo WHERE channel_id = :channelId', $params);
+        $this->execWithParams('UPDATE users SET current_elo = current_elo + temp_elo  WHERE channel_id = :channelId', $params);
+        $this->execWithParams('UPDATE users SET temp_elo = 0 WHERE channel_id = :channelId', $params); // Reset temporary elo for all users
     }
 
-    /**
-     * @param int $userId
-     * @param int $tempElo
-     */
-    private function updateUserElo($userId, $tempElo)
+    private function execWithParams(string $query, array $params = []): void
     {
-       $query = $this->prepare('UPDATE users SET temp_elo = temp_elo + :tempElo WHERE id = :userId');
+        $query = $this->prepare($query);
+
+        foreach ($params as $key => $value) {
+            $query->bindParam($key, $value);
+        }
+
+        $query->execute();
+    }
+
+    private function updateUserElo(string $channel, string $userId, int $tempElo): void
+    {
+       $query = $this->prepare('UPDATE users SET temp_elo = temp_elo + :tempElo WHERE id = :userId AND channel_id = :channelId');
 
        $query->bindParam('tempElo', $tempElo);
        $query->bindParam('userId', $userId);
+       $query->bindParam('channelId', $channel);
        $query->execute();
     }
 
     /**
+     * @param string $channel
      * @param array $game data from table games
      * @param int $playersNeeded
      * @param bool $teamAWon
      */
-    private function updateTemporaryElo($game, $playersNeeded, $teamAWon)
+    private function updateTemporaryElo(string $channel, array $game, int $playersNeeded, bool $teamAWon): void
     {
         $gamePlayers = [];
         for ($i = 1; $i <= $playersNeeded; $i++) {
-            $gamePlayers[] = $this->getUser($game['player_' . $i]);
+            $gamePlayers[] = $this->getUser($channel, $game['player_' . $i]);
         }
 
         if ($playersNeeded == 2) {
             $this->updateUserElo(
+                $channel,
                 $gamePlayers[0]['id'],
                 EloManager::getTempElo(
                     $gamePlayers[0]['current_elo'],
@@ -536,6 +494,7 @@ class Database extends \SQLite3
             );
 
             $this->updateUserElo(
+                $channel,
                 $gamePlayers[1]['id'],
                 EloManager::getTempElo(
                     $gamePlayers[1]['current_elo'],
@@ -545,6 +504,7 @@ class Database extends \SQLite3
             );
         } else {
             $this->updateUserElo(
+                $channel,
                 $gamePlayers[0]['id'],
                 EloManager::getTempElo(
                     ($gamePlayers[0]['current_elo'] + $gamePlayers[1]['current_elo']) / 2,
@@ -553,6 +513,7 @@ class Database extends \SQLite3
                 )
             );
             $this->updateUserElo(
+                $channel,
                 $gamePlayers[1]['id'],
                 EloManager::getTempElo(
                     ($gamePlayers[0]['current_elo'] + $gamePlayers[1]['current_elo']) / 2,
@@ -561,6 +522,7 @@ class Database extends \SQLite3
                 )
             );
             $this->updateUserElo(
+                $channel,
                 $gamePlayers[2]['id'],
                 EloManager::getTempElo(
                     ($gamePlayers[2]['current_elo'] + $gamePlayers[3]['current_elo']) / 2,
@@ -569,6 +531,7 @@ class Database extends \SQLite3
                 )
             );
             $this->updateUserElo(
+                $channel,
                 $gamePlayers[3]['id'],
                 EloManager::getTempElo(
                     ($gamePlayers[2]['current_elo'] + $gamePlayers[3]['current_elo']) / 2,
@@ -579,9 +542,10 @@ class Database extends \SQLite3
         }
     }
 
-	public function getEloDeltas()
-	{
-		$query = $this->prepare('SELECT `id`, `name`, `temp_elo`, `current_elo` FROM users WHERE `temp_elo`');
+	public function getEloDeltas(string $channel): array
+    {
+		$query = $this->prepare('SELECT `id`, `name`, `temp_elo`, `current_elo` FROM users WHERE `temp_elo` and channel_id = :channelId');
+        $query->bindParam('channelId', $channel);
 		$result = $query->execute();
 		$data = [];
 

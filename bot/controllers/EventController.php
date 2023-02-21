@@ -2,23 +2,24 @@
 
 namespace w\Bot\controllers;
 
+use InvalidArgumentException;
 use w\Bot\MessageManager;
 
 class EventController extends BaseController
 {
-    protected $types = [
+    protected array $types = [
+        /** {@see EventController::actionUrlVerification()} */
+        /** {@see EventController::processEvents()} */
         'url_verification' => 'actionUrlVerification',
         'event_callback' => 'processEvents',
     ];
 
-    private $events = [
+    private array $events = [
+        /** {@see EventController::actionMessage()} */
         'message' => 'actionMessage',
     ];
 
-    /**
-     * @return string
-     */
-    public function actionUrlVerification()
+    public function actionUrlVerification(): string
     {
         return $this->payload['challenge'];
     }
@@ -31,7 +32,7 @@ class EventController extends BaseController
         $event = $this->payload['event'];
 
         if (!isset($this->events[$event['type']])) {
-            throw new \InvalidArgumentException('Invalid payload type received!');
+            throw new InvalidArgumentException('Invalid payload type received!');
         }
 
         return call_user_func([$this, $this->events[$event['type']]], $event);
