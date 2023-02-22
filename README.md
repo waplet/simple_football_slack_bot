@@ -5,7 +5,7 @@
 Populate your tokens and user ids
 
     composer install
-    php scripts/create_db.php
+    ls scripts | xargs -I {} php {}
     $ php -S localhost:80 index.php
 
 Add bot to Slack bots
@@ -32,7 +32,8 @@ Host it
 
     cp .env.example
     // update .env
-    docker-compose up -d
+    docker-compose up -d [--force-recreate --build]
+    docker exec simple_football_slack_bot-app-1 bash -c 'ls scripts | xargs -I {} php scripts/{}'
 
 
 # Requirements
