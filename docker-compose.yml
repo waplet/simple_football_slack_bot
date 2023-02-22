@@ -1,8 +1,12 @@
 version: "3.9"
 services:
-    app:
-        build:
-            context: .
-        ports:
-            -  "8080:80"
+  app:
+    build:
+      context: .
+    ports:
+      - "8080:80"
+    volumes:
+      - database:/usr/opt/app/data
 
+volumes:
+  database:

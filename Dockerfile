@@ -11,6 +11,5 @@ EXPOSE 80
 COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
 
 RUN composer install
-RUN ls scripts | xargs -I {} php scripts/{}
 
 CMD ["php", "-S", "0.0.0.0:80", "index.php"]
