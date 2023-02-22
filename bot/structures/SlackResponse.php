@@ -9,5 +9,10 @@ namespace w\Bot\structures;
  */
 class SlackResponse
 {
-    public $message;
+    public string $message;
+
+    /**
+     * Should be responded to same channel as incoming message.
+     */
+    public string $channel;
 }

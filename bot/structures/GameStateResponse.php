@@ -9,4 +9,9 @@ namespace w\Bot\structures;
  */
 class GameStateResponse
 {
+    /**
+     * Same as incoming payload's
+     * @var string
+     */
+    public string $channel;
 }
