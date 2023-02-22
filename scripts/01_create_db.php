@@ -59,8 +59,13 @@ SQL
 //print_r($db->getGames());
 
 // $db->clearActiveGame();
-// $db->createActiveGame('U7A4L7NN6');
+// $db->createActiveGame('C79JSV1SM', 'U7A4L7NN6');
 // $playersJoined = [1,2,3];
 // foreach ($playersJoined as $player) {
-//     $db->addPlayer($player);
+//     $db->addPlayer('C79JSV1SM', $player);
+// }
+// $db->createActiveGame('C79EVL588', 'U7A4L7NN6');
+// $playersJoined = [1,2,3];
+// foreach ($playersJoined as $player) {
+//     $db->addPlayer('C79EVL588', $player);
 // }

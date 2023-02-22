@@ -34,7 +34,9 @@ try {
 if (!is_null($response)) {
     // Action Responses
     if (is_string($response)) {
+        header("Content-Type: text/plain");
         echo $response;
+        return;
     } elseif ($response instanceof GameStateResponse) {
         header('Content-type: application/json');
         $messageBuilder = $footballState->getGameStateResponse($response->channel);
